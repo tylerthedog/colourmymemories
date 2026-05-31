@@ -1,0 +1,6 @@
+{
+  "name": "ColourMyMemories",
+  "description": "Transform your precious photos into one-of-a-kind personalised colouring storybooks. Perfect heartfelt gifts for all ages.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
