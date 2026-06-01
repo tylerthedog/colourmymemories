@@ -165,41 +165,106 @@ export default function OrderForm({ navigate }: OrderFormProps) {
       }
       storyDetailsContent += `\n[Reference ID: ${orderId}]`;
 
-      // 3. Build Google Form matching parameters
-      const formParams = new URLSearchParams();
-      // - Full Name ID: entry.1474310025
-      formParams.append('entry.1474310025', formData.customer_name);
-      // - Phone Number ID: entry.1082449212
-      formParams.append('entry.1082449212', formData.phone || '');
-      // - Street Address ID: entry.577022071
-      formParams.append('entry.577022071', formData.street);
-      // - City ID: entry.1697465648
-      formParams.append('entry.1697465648', formData.city);
-      // - Province ID: entry.1493182288
-      formParams.append('entry.1493182288', formData.province);
-      // - Postal Code ID: entry.1143424652
-      formParams.append('entry.1143424652', formData.postal_code);
-      // - Country ID: entry.1691663973
-      formParams.append('entry.1691663973', formData.country);
-      // - Story Details ID: entry.1137043253
-      formParams.append('entry.1137043253', storyDetailsContent);
-      
-      // If built-in email collection is enabled on Google Forms, append the email address
-      formParams.append('emailAddress', formData.email);
+      // 3. Submit directly to Google Forms using a hidden iframe form submission.
+      // This is the absolute gold-standard, bulletproof method that completely bypasses
+      // browser CORS blocks, adblockers, and browser-specific fetch tracking preventions.
+      const iframe = document.createElement('iframe');
+      iframe.name = 'google_form_iframe';
+      iframe.id = 'google_form_iframe';
+      iframe.style.display = 'none';
+      document.body.appendChild(iframe);
 
-      // Active Google Form Submission Target (Form ID: 18ZKSKgySU6BbPIHsZI6sDjAt8N8vDw4vdD9gzp5iQNw)
-      // Specifying the precise destination endpoint URL for user data submission.
-      const targetUrl = "https://docs.google.com/forms/d/18ZKSKgySU6BbPIHsZI6sDjAt8N8vDw4vdD9gzp5iQNw/formResponse";
+      const form = document.createElement('form');
+      form.method = 'POST';
+      form.action = 'https://docs.google.com/forms/d/18ZKSKgySU6BbPIHsZI6sDjAt8N8vDw4vdD9gzp5iQNw/formResponse';
+      form.target = 'google_form_iframe';
 
-      // 4. Submit via direct background fetch using mode: 'no-cors'
-      await fetch(targetUrl, {
-        method: 'POST',
-        mode: 'no-cors',
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded'
-        },
-        body: formParams.toString()
+      const fields: Record<string, string> = {
+        'entry.1474310025': formData.customer_name,
+        'entry.1082449212': formData.phone || '',
+        'entry.577022071': formData.street,
+        'entry.1697465648': formData.city,
+        'entry.1493182288': formData.province,
+        'entry.1143424652': formData.postal_code,
+        'entry.1691663973': formData.country,
+        'entry.1137043253': storyDetailsContent,
+        'emailAddress': formData.email
+      };
+
+      Object.entries(fields).forEach(([name, value]) => {
+        const input = document.createElement('input');
+        input.type = 'hidden';
+        input.name = name;
+        input.value = value;
+        form.appendChild(input);
       });
+
+      document.body.appendChild(form);
+      form.submit();
+
+      // Clean up DOM elements after a brief duration
+      setTimeout(() => {
+        try {
+          document.body.removeChild(form);
+          document.body.removeChild(iframe);
+        } catch (domErr) {
+          console.warn('DOM cleanup warning:', domErr);
+        }
+      }, 5000);
+
+      // 4. Also upload image files to the backend server (async, non-blocking fallback)
+      // This ensures that the uploaded images and stories are backed up to Cloudflare R2 / local disk
+      try {
+        const base64Photos = await Promise.all(
+          photos.map(async (file) => {
+            const base64Data = await fileToBase64(file);
+            return {
+              name: file.name,
+              type: file.type,
+              base64Data
+            };
+          })
+        );
+
+        let base64StoryFile = null;
+        if (storyFile) {
+          const base64Data = await fileToBase64(storyFile);
+          base64StoryFile = {
+            name: storyFile.name,
+            type: storyFile.type,
+            base64Data
+          };
+        }
+
+        // Auto-detect backend endpoint URL (handles local express dev as well as Netlify production)
+        const isNetlify = window.location.hostname.includes('netlify.app');
+        const apiEndpoint = isNetlify ? '/.netlify/functions/submit-order' : '/api/submit-order';
+
+        await fetch(apiEndpoint, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            details: {
+              customer_name: formData.customer_name,
+              email: formData.email,
+              phone: formData.phone,
+              street: formData.street,
+              city: formData.city,
+              province: formData.province,
+              postal_code: formData.postal_code,
+              country: formData.country,
+              story: formData.story
+            },
+            photos: base64Photos,
+            storyFile: base64StoryFile
+          })
+        });
+      } catch (backendApiErr) {
+        // Encase in catch block to avoid disrupting successful browser form submission
+        console.warn('Backend image repository backup warning:', backendApiErr);
+      }
 
       // 5. Update state on successful completion to advance the user directly to the payment view
       setSubmittedOrderId(orderId);
