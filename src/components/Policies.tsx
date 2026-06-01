@@ -104,7 +104,7 @@ export default function Policies({ navigate }: PoliciesProps) {
                     <section className="space-y-2">
                       <h3 className="text-lg font-bold text-foreground">2. Sensitive Image Assets handling</h3>
                       <p>
-                        We process uploaded images exclusively with deep creative diligence to transform your portrait drawings into custom coloring book pages. We do not sell, rent, or lease your private images. After final proofing and physical delivery is complete, we purge active photo arrays from our operational workspace servers.
+                        We process uploaded images exclusively with deep creative diligence to transform your portrait drawings into custom colouring book pages. We do not sell, rent, or lease your private images. After final proofing and physical delivery is complete, we purge active photo arrays from our operational workspace servers.
                       </p>
                     </section>
 
@@ -129,7 +129,7 @@ export default function Policies({ navigate }: PoliciesProps) {
 
                   <div className="space-y-5 text-muted-foreground leading-relaxed text-sm md:text-base font-sans">
                     <p>
-                      Thank you for choosing ColourMyMemories, where we create custom coloring books based on your personal stories, photos, and details. Because every book is made just for you, all sales are final, but don't worry, we've built a process that makes sure you're completely happy before anything goes to print! Here's how it works 👇
+                      Thank you for choosing ColourMyMemories, where we create custom colouring books based on your personal stories, photos, and details. Because every book is made just for you, all sales are final, but don't worry, we've built a process that makes sure you're completely happy before anything goes to print! Here's how it works 👇
                     </p>
 
                     <section className="space-y-2">
@@ -170,7 +170,7 @@ export default function Policies({ navigate }: PoliciesProps) {
                         Shipping times after you approve your proof are estimates, unfortunately, we can't control carrier delays, but we do our best to keep things moving. You'll receive a tracking link via your confirmation email so you can follow your order every step of the way.
                       </p>
                       <p className="pt-2">
-                        Questions? We're always happy to help, <a href="mailto:colourmymemories@gmail.com" className="text-primary hover:underline font-semibold">contact us</a> anytime!
+                        Questions? We're always happy to help, <a href="mailto:sales@colourmymemories.co.za" className="text-primary hover:underline font-semibold">contact us</a> anytime!
                       </p>
                     </section>
 

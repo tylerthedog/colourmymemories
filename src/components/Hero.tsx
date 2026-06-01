@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef, MouseEvent } from 'react';
 import { ChevronLeft, ChevronRight, Sparkles } from 'lucide-react';
 
 interface HeroProps {
@@ -6,85 +6,131 @@ interface HeroProps {
 }
 
 const carouselImages = [
-  { src: "/assets/carousel-1-TeRwl5LT.png", alt: "Baby in car colouring page" },
-  { src: "/assets/carousel-2-BbN4GWVW.png", alt: "Family portrait colouring page" },
-  { src: "/assets/carousel-3-DgGshBZI.png", alt: "Vibes baby colouring page" },
-  { src: "/assets/carousel-4-ZmqDrfhT.png", alt: "Ride-on car kid colouring page" },
-  { src: "/assets/carousel-5-Bs0j1guA.png", alt: "Kid with bucket on bike colouring page" },
-  { src: "/assets/carousel-6-t_Quetrk.png", alt: "Classic sports cars colouring page" },
-  { src: "/assets/carousel-7-YZOMDhsz.png", alt: "Brothers posing back-to-back colouring page" },
-  { src: "/assets/carousel-8-DKoBHHFP.png", alt: "Malachi birthday cake colouring page" },
-  { src: "/assets/carousel-9-BCPyTS6g.png", alt: "Minecraft characters colouring page" },
-  { src: "/assets/carousel-10-BCFju6sL.png", alt: "Family walking together colouring page" },
-  { src: "/assets/carousel-11.png", alt: "Defender mountain tour colouring page" },
-  { src: "/assets/carousel-12.png", alt: "Shades kid colouring page" },
-  { src: "/assets/carousel-13.png", alt: "Towel baby colouring page" },
-  { src: "/assets/carousel-14.png", alt: "Bride with bouquet colouring page" },
-  { src: "/assets/carousel-15.png", alt: "Lifting husband with pregnant wife colouring page" },
-  { src: "/assets/carousel-16.png", alt: "Wedding couple close up colouring page" }
+  { src: "https://lh3.googleusercontent.com/d/11iZfCQwCwP17ecZQIenIrwX_CYhO5oeD", alt: "Baby in car colouring page" },
+  { src: "https://lh3.googleusercontent.com/d/18F-YgfoZSXAZsGoh-LfKImCZ8xnCkqGv", alt: "Family portrait colouring page" },
+  { src: "https://lh3.googleusercontent.com/d/18xz4PJax8jnuT6CZhbV7U8_duzfs_2rq", alt: "Vibes baby colouring page" },
+  { src: "https://lh3.googleusercontent.com/d/19KD3JVUPC9BjOZT-z_velKDhi839WHgP", alt: "Ride-on car kid colouring page" },
+  { src: "https://lh3.googleusercontent.com/d/1DYHydDa7Xh9jgTkdT3fXYnP0jm-wEt_E", alt: "Kid with bucket on bike colouring page" },
+  { src: "https://lh3.googleusercontent.com/d/1IUbiVcu_M__9USCmrfVEfNrzXaVckHT4", alt: "Classic sports cars colouring page" },
+  { src: "https://lh3.googleusercontent.com/d/1O2rZ-5e3FT1D3vJcXxTz9V7v2ahApAUt", alt: "Malachi birthday cake colouring page" },
+  { src: "https://lh3.googleusercontent.com/d/1Zj8AoLGDYba2cvPXaLEvwi0GCPoQ08yM", alt: "Minecraft characters colouring page" },
+  { src: "https://lh3.googleusercontent.com/d/1biRsKUzjg8a2gWhZhO0pPq_d9THchXaz", alt: "Family walking together colouring page" },
+  { src: "https://lh3.googleusercontent.com/d/1dCPTiLFQvXnwhUdfbFci53P3DXIr8pVq", alt: "Defender mountain tour colouring page" },
+  { src: "https://lh3.googleusercontent.com/d/1lXgKrfnu87Hl4Za5-5POT7YvdBCgj4sY", alt: "Shades kid colouring page" },
+  { src: "https://lh3.googleusercontent.com/d/1mqltGoYhpgQ9hyTvYo4XbHpd2aPqEynu", alt: "Towel baby colouring page" },
+  { src: "https://lh3.googleusercontent.com/d/1oWYJr5nqnqnHVtLCMmW21QErGdvTy0af", alt: "Bride with bouquet colouring page" },
+  { src: "https://lh3.googleusercontent.com/d/1oZZ0GW3Jro2VAsHNY6P2meKLLFQF64iI", alt: "Lifting husband with pregnant wife colouring page" },
+  { src: "https://lh3.googleusercontent.com/d/1sGrdK-Ls7GzzvBIiGFblxxDtCMVaeH9E", alt: "Wedding couple close up colouring page" }
 ];
 
 export default function Hero({ navigate }: HeroProps) {
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [isAnimating, setIsAnimating] = useState(false);
-  const [direction, setDirection] = useState<'left' | 'right' | null>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
+  
+  const [isDragging, setIsDragging] = useState(false);
+  const [startX, setStartX] = useState(0);
+  const [scrollLeftState, setScrollLeftState] = useState(0);
+  const [isHovering, setIsHovering] = useState(false);
 
-  const getIndex = (offset: number) => {
-    const total = carouselImages.length;
-    return ((currentIndex + offset) % total + total) % total;
+  // Calculate the closest slide that is centered within the scroll view
+  const handleScroll = () => {
+    if (!scrollRef.current) return;
+    const container = scrollRef.current;
+    const containerCenter = container.scrollLeft + container.clientWidth / 2;
+    
+    const children = Array.from(container.children) as HTMLElement[];
+    let closestIndex = 0;
+    let minDistance = Infinity;
+    
+    children.forEach((child, idx) => {
+      const childCenter = child.offsetLeft + child.clientWidth / 2;
+      const distance = Math.abs(containerCenter - childCenter);
+      if (distance < minDistance) {
+        minDistance = distance;
+        closestIndex = idx;
+      }
+    });
+    
+    setCurrentIndex(closestIndex);
   };
 
-  const handlePrev = useCallback(() => {
-    if (isAnimating) return;
-    setIsAnimating(true);
-    setDirection('right');
-    setTimeout(() => {
-      setCurrentIndex((prev) => (prev - 1 + carouselImages.length) % carouselImages.length);
-      setDirection(null);
-      setTimeout(() => setIsAnimating(false), 50);
-    }, 400);
-  }, [isAnimating]);
+  // Drag listeners to allow custom swipe/drag on desktop
+  const handleMouseDown = (e: MouseEvent) => {
+    if (!scrollRef.current) return;
+    setIsDragging(true);
+    setStartX(e.pageX - scrollRef.current.offsetLeft);
+    setScrollLeftState(scrollRef.current.scrollLeft);
+  };
 
-  const handleNext = useCallback(() => {
-    if (isAnimating) return;
-    setIsAnimating(true);
-    setDirection('left');
-    setTimeout(() => {
-      setCurrentIndex((prev) => (prev + 1) % carouselImages.length);
-      setDirection(null);
-      setTimeout(() => setIsAnimating(false), 50);
-    }, 400);
-  }, [isAnimating]);
+  const handleMouseLeaveOrUp = () => {
+    setIsDragging(false);
+  };
+
+  const handleMouseMove = (e: MouseEvent) => {
+    if (!isDragging || !scrollRef.current) return;
+    e.preventDefault();
+    const x = e.pageX - scrollRef.current.offsetLeft;
+    const walk = (x - startX) * 1.5; // Drag scroll offset amplifier
+    scrollRef.current.scrollLeft = scrollLeftState - walk;
+  };
+
+  const scrollNext = useCallback(() => {
+    if (!scrollRef.current) return;
+    const container = scrollRef.current;
+    const maxScrollLeft = container.scrollWidth - container.clientWidth;
+    
+    // Check if we are near the end. If so, wrap around back to the beginning.
+    const isAtEnd = container.scrollLeft >= maxScrollLeft - 15;
+    
+    if (isAtEnd) {
+      container.scrollTo({ left: 0, behavior: 'smooth' });
+    } else {
+      const firstChild = container.firstElementChild as HTMLElement;
+      if (firstChild) {
+        const cardWidth = firstChild.getBoundingClientRect().width + 24; // width + gap-6
+        container.scrollBy({ left: cardWidth, behavior: 'smooth' });
+      }
+    }
+  }, []);
+
+  const scrollPrev = useCallback(() => {
+    if (!scrollRef.current) return;
+    const container = scrollRef.current;
+    
+    // Check if we are near the start. If so, wrap around to the end.
+    const isAtStart = container.scrollLeft <= 15;
+    
+    if (isAtStart) {
+      const maxScrollLeft = container.scrollWidth - container.clientWidth;
+      container.scrollTo({ left: maxScrollLeft, behavior: 'smooth' });
+    } else {
+      const firstChild = container.firstElementChild as HTMLElement;
+      if (firstChild) {
+        const cardWidth = firstChild.getBoundingClientRect().width + 24; // width + gap-6
+        container.scrollBy({ left: -cardWidth, behavior: 'smooth' });
+      }
+    }
+  }, []);
 
   const handleDotClick = useCallback((index: number) => {
-    if (isAnimating || index === currentIndex) return;
-    setIsAnimating(true);
-    setDirection(index > currentIndex ? 'left' : 'right');
-    setTimeout(() => {
-      setCurrentIndex(index);
-      setDirection(null);
-      setTimeout(() => setIsAnimating(false), 50);
-    }, 400);
-  }, [isAnimating, currentIndex]);
+    if (!scrollRef.current) return;
+    const container = scrollRef.current;
+    const child = container.children[index] as HTMLElement;
+    if (child) {
+      // Align chosen card center in horizontal carousel visible area
+      const targetScrollLeft = child.offsetLeft - (container.clientWidth - child.clientWidth) / 2;
+      container.scrollTo({ left: targetScrollLeft, behavior: 'smooth' });
+    }
+  }, []);
 
-  // Autoplay carousel
+  // Autoplay carousel on timer
   useEffect(() => {
+    if (isDragging || isHovering) return;
     const interval = setInterval(() => {
-      handleNext();
-    }, 5000);
+      scrollNext();
+    }, 4500);
     return () => clearInterval(interval);
-  }, [handleNext]);
-
-  const getTranslateValue = (position: 'left' | 'center' | 'right') => {
-    if (!direction) return 'translateX(0)';
-    if (position === 'center') {
-      return direction === 'left' ? 'translateX(-120%)' : 'translateX(120%)';
-    }
-    if (position === 'right') {
-      return direction === 'left' ? 'translateX(-100%)' : 'translateX(100%)';
-    }
-    return 'translateX(0)';
-  };
+  }, [scrollNext, isDragging, isHovering]);
 
   return (
     <section className="relative overflow-hidden bg-gradient-to-br from-background via-muted/40 to-background pt-24 pb-16 lg:pt-32 lg:pb-24 border-b border-border/10">
@@ -123,86 +169,76 @@ export default function Hero({ navigate }: HeroProps) {
               How It Works
             </a>
           </div>
-        </div>
-
-        {/* Dynamic Carousel Slideshow */}
-        <div className="relative mt-16 max-w-6xl mx-auto flex items-center justify-center min-h-[300px] md:min-h-[450px]">
+        </div>        {/* Dynamic Carousel Slideshow */}
+        <div 
+          className="relative mt-16 max-w-7xl mx-auto flex items-center justify-center min-h-[400px] md:min-h-[600px]"
+          onMouseEnter={() => setIsHovering(true)}
+          onMouseLeave={() => {
+            setIsHovering(false);
+            setIsDragging(false);
+          }}
+        >
           {/* Previous Arrow */}
           <button
-            onClick={handlePrev}
-            disabled={isAnimating}
-            className="absolute left-2 lg:left-8 z-20 h-11 w-11 rounded-full bg-background/90 border border-border hover:bg-background transition-colors shadow-soft hover:scale-110 disabled:opacity-50 flex items-center justify-center cursor-pointer"
+            onClick={scrollPrev}
+            className="absolute left-2 lg:left-8 z-20 h-11 w-11 rounded-full bg-background/90 border border-border hover:bg-background transition-colors shadow-soft hover:scale-110 flex items-center justify-center cursor-pointer"
             aria-label="Previous slide"
           >
             <ChevronLeft className="h-6 w-6 text-foreground" />
           </button>
-
-          {/* Carousel Layout (Previous, Center, Next) */}
-          <div className="relative w-full flex items-center justify-center gap-6 overflow-hidden py-4 px-2 select-none">
-            {/* Left Staggered Image (Desktop Only) */}
+ 
+          {/* Carousel Layout (Horizontal Smooth Scroll Snap Strip) */}
+          <div className="relative w-full overflow-hidden py-4 px-2 select-none">
             <div 
-              className="hidden sm:block relative w-48 lg:w-64 opacity-50 scale-85 transition-all duration-300 transform"
-              style={{
-                transform: getTranslateValue('left') + ' scale(0.85)',
-                transition: 'transform 400ms cubic-bezier(0.25, 0.46, 0.45, 0.94), opacity 400ms'
-              }}
+              ref={scrollRef}
+              onScroll={handleScroll}
+              onMouseDown={handleMouseDown}
+              onMouseLeave={handleMouseLeaveOrUp}
+              onMouseUp={handleMouseLeaveOrUp}
+              onMouseMove={handleMouseMove}
+              className={`flex gap-6 overflow-x-auto py-6 px-[12%] sm:px-[20%] md:px-[25%] lg:px-[30%] select-none scrollbar-none ${
+                isDragging ? '' : 'snap-x snap-mandatory scroll-smooth'
+              } cursor-grab active:cursor-grabbing w-full`}
             >
-              <div className="bg-card rounded-2xl shadow-card overflow-hidden border border-border/50">
-                <img 
-                  src={carouselImages[getIndex(-1)].src} 
-                  alt={carouselImages[getIndex(-1)].alt} 
-                  className="w-full h-auto"
-                  referrerPolicy="no-referrer"
-                />
-              </div>
-            </div>
-
-            {/* Active Highlighted Center Image */}
-            <div 
-              className="relative w-80 md:w-96 lg:w-[480px] z-10 scale-100 transition-all duration-300 transform"
-              style={{
-                transform: getTranslateValue('center'),
-                transition: 'transform 400ms cubic-bezier(0.25, 0.46, 0.45, 0.94)'
-              }}
-            >
-              <div className="relative">
-                {/* Rainbow background blur */}
-                <div className="absolute -inset-4 gradient-rainbow rounded-[2.5rem] opacity-35 blur-2xl" />
-                <div className="relative bg-card rounded-[2rem] overflow-hidden shadow-glow border-4 border-primary/20 p-2 md:p-3">
-                  <img 
-                    src={carouselImages[currentIndex].src} 
-                    alt={carouselImages[currentIndex].alt} 
-                    className="w-full h-auto rounded-[1.5rem]"
-                    referrerPolicy="no-referrer"
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* Right Staggered Image (Desktop Only) */}
-            <div 
-              className="hidden sm:block relative w-48 lg:w-64 opacity-50 scale-85 transition-all duration-300 transform"
-              style={{
-                transform: getTranslateValue('right') + ' scale(0.85)',
-                transition: 'transform 400ms cubic-bezier(0.25, 0.46, 0.45, 0.94), opacity 400ms'
-              }}
-            >
-              <div className="bg-card rounded-2xl shadow-card overflow-hidden border border-border/50">
-                <img 
-                  src={carouselImages[getIndex(1)].src} 
-                  alt={carouselImages[getIndex(1)].alt} 
-                  className="w-full h-auto"
-                  referrerPolicy="no-referrer"
-                />
-              </div>
+              {carouselImages.map((img, idx) => {
+                const isActive = currentIndex === idx;
+                return (
+                  <div 
+                    key={idx}
+                    className={`snap-center shrink-0 w-[280px] sm:w-[360px] md:w-[420px] lg:w-[480px] transition-all duration-500 ease-out transform ${
+                      isActive 
+                        ? 'scale-100 opacity-100 z-10' 
+                        : 'scale-90 opacity-40 hover:opacity-60'
+                    }`}
+                  >
+                    <div className="relative">
+                      {/* Rainbow background blur behind active card */}
+                      {isActive && (
+                        <div className="absolute -inset-4 gradient-rainbow rounded-[2.5rem] opacity-30 blur-2xl animate-pulse duration-3000" />
+                      )}
+                      <div className={`relative bg-card rounded-[2rem] overflow-hidden border p-2 md:p-3 transition-all duration-500 ${
+                        isActive 
+                          ? 'shadow-glow border-primary/20 scale-102 font-bold' 
+                          : 'shadow-card border-border/50'
+                      }`}>
+                        <img 
+                          src={img.src} 
+                          alt={img.alt} 
+                          className="w-full h-auto rounded-[1.5rem] object-contain bg-white aspect-[3/4] pointer-events-none"
+                          referrerPolicy="no-referrer"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </div>
 
           {/* Next Arrow */}
           <button
-            onClick={handleNext}
-            disabled={isAnimating}
-            className="absolute right-2 lg:right-8 z-20 h-11 w-11 rounded-full bg-background/90 border border-border hover:bg-background transition-colors shadow-soft hover:scale-110 disabled:opacity-50 flex items-center justify-center cursor-pointer"
+            onClick={scrollNext}
+            className="absolute right-2 lg:right-8 z-20 h-11 w-11 rounded-full bg-background/90 border border-border hover:bg-background transition-colors shadow-soft hover:scale-110 flex items-center justify-center cursor-pointer"
             aria-label="Next slide"
           >
             <ChevronRight className="h-6 w-6 text-foreground" />
@@ -215,8 +251,7 @@ export default function Hero({ navigate }: HeroProps) {
             <button
               key={idx}
               onClick={() => handleDotClick(idx)}
-              disabled={isAnimating}
-              className={`w-2.5 h-2.5 rounded-full transition-all duration-300 disabled:cursor-not-allowed ${
+              className={`w-2.5 h-2.5 rounded-full transition-all duration-300 cursor-pointer ${
                 idx === currentIndex ? 'bg-primary w-6' : 'bg-muted-foreground/30 hover:bg-muted-foreground/50'
               }`}
               aria-label={`Go to slide ${idx + 1}`}

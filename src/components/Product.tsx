@@ -9,11 +9,11 @@ export default function Product({ navigate }: ProductProps) {
     { icon: BookOpen, label: "A5 Format", desc: "Easy handling and perfect portable size (148mm x 210mm)" },
     { icon: Layers, label: "20–30 Pages", desc: "Generous collection of custom black-and-white lineart scenes" },
     { icon: Calendar, label: "5–7 Days Prod.", desc: "Fast production time of custom outlines before final checkout" },
-    { icon: Sparkles, label: "Color Cover", desc: "Dazzling full-color cover showcasing one of your selected moments" }
+    { icon: Sparkles, label: "Colour Cover", desc: "Dazzling full-colour cover showcasing one of your selected moments" }
   ];
 
   const highlights = [
-    "Perfect for coloring with pencils, crayons, or markers",
+    "Perfect for colouring with pencils, crayons, or markers",
     "Heartfelt emotional gifts for anniversaries, birthdays, weddings",
     "Premium thick heavy paper stock prevents screen bleed-through",
     "Professionally bound custom storybook layout designed for durability"
@@ -30,7 +30,7 @@ export default function Product({ navigate }: ProductProps) {
                 <div className="absolute -inset-4 gradient-rainbow rounded-[2.5rem] opacity-30 blur-2xl" />
                 <div className="relative bg-card rounded-[2rem] overflow-hidden shadow-card border-4 border-primary/20 p-6">
                   <img 
-                    src="/assets/carousel-16.png" 
+                    src="https://lh3.googleusercontent.com/d/1sGrdK-Ls7GzzvBIiGFblxxDtCMVaeH9E" 
                     alt="Wedding couple custom colouring page" 
                     className="w-full h-auto rounded-3xl"
                     referrerPolicy="no-referrer"

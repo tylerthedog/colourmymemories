@@ -55,7 +55,7 @@ async function startServer() {
     }
   });
 
-  // API Route: Submitting Custom Coloring Book Orders
+  // API Route: Submitting Custom Colouring Book Orders
   app.post('/api/orders', async (req, res) => {
     try {
       const { details, photos, storyFile } = req.body;
@@ -304,24 +304,30 @@ async function startServer() {
       console.log(`[Google Form Submission] Sending background POST to ${formActionUrl}...`);
 
       const formParams = new URLSearchParams();
-      // Name Entry ID: entry.1474310025
+      // - Full Name ID: entry.1474310025
       formParams.append('entry.1474310025', details.customer_name || '');
-      // Email Entry ID: entry.1193537937
-      formParams.append('entry.1193537937', details.email || '');
-      // Phone Entry ID: entry.1082449212
+      // - Phone Number ID: entry.1082449212
       formParams.append('entry.1082449212', details.phone || '');
+      // - Street Address ID: entry.577022071
+      formParams.append('entry.577022071', details.street || '');
+      // - City ID: entry.1697465648
+      formParams.append('entry.1697465648', details.city || '');
+      // - Province ID: entry.1493182288
+      formParams.append('entry.1493182288', details.province || '');
+      // - Postal Code ID: entry.1143424652
+      formParams.append('entry.1143424652', details.postal_code || '');
+      // - Country ID: entry.1691663973
+      formParams.append('entry.1691663973', details.country || 'South Africa');
 
-      // Story Details Entry ID: entry.1137043253
+      // - Story Details ID: entry.1137043253
       let storyContent = details.story || '';
+      storyContent += `\n\n[Email]: ${details.email || ''}`;
       if (imageUrls && imageUrls.length > 0) {
         storyContent += `\n\n[R2 Image URLs]:\n${imageUrls.join('\n')}`;
       }
       if (storyUrl && storyUrl !== 'None') {
         storyContent += `\n\n[Story File URL]: ${storyUrl}`;
       }
-      // Also include delivery address details inside the story content to ensure it is stored elegantly
-      const addressStr = `${details.street || ''}, ${details.city || ''}, ${details.province || ''}, ${details.postal_code || ''}, ${details.country || 'South Africa'}`;
-      storyContent += `\n\n[Shipping Address]: ${addressStr}`;
       storyContent += `\n\n[Order ID]: ${orderId}`;
       storyContent += `\n[Timestamp]: ${new Date().toISOString()}`;
 

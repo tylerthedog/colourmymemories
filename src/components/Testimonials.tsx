@@ -48,7 +48,7 @@ export default function Testimonials() {
             What Our <span className="text-gradient-rainbow">Customers Say</span>
           </h2>
           <p className="text-muted-foreground text-base max-w-lg mx-auto">
-            Hear from families who've transformed their memories into coloring masterpieces.
+            Hear from families who've transformed their memories into colouring masterpieces.
           </p>
         </div>
 

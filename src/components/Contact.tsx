@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Phone, MessageSquare, Mail, Send, CheckCircle2 } from 'lucide-react';
+import { Phone, MessageSquare, Mail, Send, CheckCircle2, Facebook } from 'lucide-react';
 
 export default function Contact() {
   const [formData, setFormData] = useState({ name: '', email: '', message: '' });
@@ -8,9 +8,10 @@ export default function Contact() {
   const [errorMsg, setErrorMsg] = useState('');
 
   const contactMethods = [
-    { icon: Phone, title: "Phone", value: "060 829 1485", href: "tel:0608291485" },
+    { icon: Phone, title: "Phone", value: "060 829 1485", href: "tel:+27608291485" },
     { icon: MessageSquare, title: "WhatsApp", value: "060 829 1485", href: "https://wa.me/27608291485" },
-    { icon: Mail, title: "Email", value: "colourmymemories@gmail.com", href: "mailto:colourmymemories@gmail.com" }
+    { icon: Mail, title: "Email", value: "sales@colourmymemories.co.za", href: "mailto:sales@colourmymemories.co.za" },
+    { icon: Facebook, title: "Facebook", value: "ColourMyMemories", href: "https://www.facebook.com/profile.php?id=61586799602322" }
   ];
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -73,23 +74,25 @@ export default function Contact() {
               </p>
 
               <div className="space-y-4 pt-2">
-                {contactMethods.map((method, idx) => (
-                  <a 
-                    key={idx} 
-                    href={method.href} 
-                    target="_blank" 
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-4 p-4 rounded-xl border border-border/50 bg-card hover:bg-muted/40 transition-colors duration-200 group"
-                  >
-                    <div className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0 bg-primary/10 text-primary group-hover:scale-105 transition-transform">
-                      <method.icon className="w-5 h-5" />
-                    </div>
-                    <div>
-                      <h4 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">{method.title}</h4>
-                      <p className="text-sm font-bold text-foreground group-hover:text-primary transition-colors">{method.value}</p>
-                    </div>
-                  </a>
-                ))}
+                {contactMethods.map((method, idx) => {
+                  const isSystemHandler = method.href.startsWith('tel:') || method.href.startsWith('mailto:');
+                  return (
+                    <a 
+                      key={idx} 
+                      href={method.href} 
+                      {...(!isSystemHandler ? { target: "_blank", rel: "noopener noreferrer" } : {})}
+                      className="flex items-center gap-4 p-4 rounded-xl border border-border/50 bg-card hover:bg-muted/40 transition-colors duration-200 group"
+                    >
+                      <div className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0 bg-primary/10 text-primary group-hover:scale-105 transition-transform">
+                        <method.icon className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <h4 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">{method.title}</h4>
+                        <p className="text-sm font-bold text-foreground group-hover:text-primary transition-colors">{method.value}</p>
+                      </div>
+                    </a>
+                  );
+                })}
               </div>
             </div>
 

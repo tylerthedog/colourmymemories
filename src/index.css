@@ -107,6 +107,14 @@
   box-shadow: var(--shadow-card);
 }
 
+@utility scrollbar-none {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
 @utility text-gradient-rainbow {
   background: var(--gradient-rainbow);
   -webkit-background-clip: text;

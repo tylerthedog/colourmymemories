@@ -1,4 +1,5 @@
 import React from 'react';
+import { Facebook, MessageSquare } from 'lucide-react';
 
 interface FooterProps {
   navigate: (to: string) => void;
@@ -45,7 +46,7 @@ export default function Footer({ navigate, path }: FooterProps) {
             >
               <div className="w-10 h-10 rounded-xl overflow-hidden border border-border/10 shadow-soft">
                 <img 
-                  src="/assets/logo-DcBoA8lE.png" 
+                  src="https://lh3.googleusercontent.com/d/1Ve56_bLLX7ULuMIPg-SppZiAJcDIAoIk" 
                   alt="ColourMyMemories" 
                   className="w-full h-full object-cover"
                   referrerPolicy="no-referrer"
@@ -57,8 +58,28 @@ export default function Footer({ navigate, path }: FooterProps) {
               </div>
             </a>
             <p className="text-background/70 text-sm leading-relaxed max-w-sm">
-              Transform your precious photos into one-of-a-kindised custom colouring storybooks. Perfect heartfelt gifts for all ages.
+              Transform your precious photos into one-of-a-kind, personalised custom colouring storybooks. Perfect heartfelt gifts for all ages.
             </p>
+            <div className="flex gap-4 pt-2">
+              <a 
+                href="https://www.facebook.com/profile.php?id=61586799602322" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="w-10 h-10 rounded-xl bg-background/10 hover:bg-secondary text-background hover:text-foreground flex items-center justify-center transition-all duration-200"
+                aria-label="Facebook"
+              >
+                <Facebook className="w-5 h-5" />
+              </a>
+              <a 
+                href="https://wa.me/27608291485" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="w-10 h-10 rounded-xl bg-background/10 hover:bg-secondary text-background hover:text-foreground flex items-center justify-center transition-all duration-200"
+                aria-label="WhatsApp"
+              >
+                <MessageSquare className="w-5 h-5" />
+              </a>
+            </div>
           </div>
 
           {/* Column 2: Quick Links */}
@@ -100,7 +121,7 @@ export default function Footer({ navigate, path }: FooterProps) {
               </li>
               <li>
                 <span className="text-sm text-background/60 block">
-                  Compliant with South Africa's POPIA act.
+                  Compliant with South Africa's POPI Act.
                 </span>
               </li>
             </ul>
