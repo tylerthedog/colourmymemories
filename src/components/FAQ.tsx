@@ -21,7 +21,7 @@ const faqs: FAQItem[] = [
   },
   {
     question: "How do I customise my storybook?",
-    answer: "Simply share your photos (family, baby, wedding, etc.) and background details via our contact form. The team weaves them into a personalised narrative—no further customisation options unless requested."
+    answer: "Simply share your photos (family, baby, wedding, etc.) and background details via our contact form. The team weaves them into a personalised narrative, no further customisation options unless requested."
   },
   {
     question: "Is this suitable only for kids?",
@@ -41,7 +41,7 @@ const faqs: FAQItem[] = [
   },
   {
     question: "What payment and shipping options are available?",
-    answer: "Payments are handled securely via EFT, card, or PayFast. Shipping is nationwide (SA) via courier, with tracking provided—international options on request."
+    answer: "Payments are handled securely via EFT, card, or PayFast. Shipping is nationwide (SA) via courier, with tracking provided, international options on request."
   },
   {
     question: "Do you offer bulk orders or wholesale pricing?",

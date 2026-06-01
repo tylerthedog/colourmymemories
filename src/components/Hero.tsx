@@ -8,14 +8,20 @@ interface HeroProps {
 const carouselImages = [
   { src: "/assets/carousel-1-TeRwl5LT.png", alt: "Baby in car colouring page" },
   { src: "/assets/carousel-2-BbN4GWVW.png", alt: "Family portrait colouring page" },
-  { src: "/assets/carousel-3-DgGshBZI.png", alt: "Kid on bike colouring page" },
-  { src: "/assets/carousel-4-ZmqDrfhT.png", alt: "Classic cars colouring page" },
-  { src: "/assets/carousel-5-Bs0j1guA.png", alt: "Brothers colouring page" },
-  { src: "/assets/carousel-6-t_Quetrk.png", alt: "Birthday cake colouring page" },
-  { src: "/assets/carousel-7-YZOMDhsz.png", alt: "Minecraft characters colouring page" },
-  { src: "/assets/carousel-8-DKoBHHFP.png", alt: "Family walking colouring page" },
-  { src: "/assets/carousel-9-BCPyTS6g.png", alt: "Off-road vehicle colouring page" },
-  { src: "/assets/carousel-10-BCFju6sL.png", alt: "Wedding couple colouring page" }
+  { src: "/assets/carousel-3-DgGshBZI.png", alt: "Vibes baby colouring page" },
+  { src: "/assets/carousel-4-ZmqDrfhT.png", alt: "Ride-on car kid colouring page" },
+  { src: "/assets/carousel-5-Bs0j1guA.png", alt: "Kid with bucket on bike colouring page" },
+  { src: "/assets/carousel-6-t_Quetrk.png", alt: "Classic sports cars colouring page" },
+  { src: "/assets/carousel-7-YZOMDhsz.png", alt: "Brothers posing back-to-back colouring page" },
+  { src: "/assets/carousel-8-DKoBHHFP.png", alt: "Malachi birthday cake colouring page" },
+  { src: "/assets/carousel-9-BCPyTS6g.png", alt: "Minecraft characters colouring page" },
+  { src: "/assets/carousel-10-BCFju6sL.png", alt: "Family walking together colouring page" },
+  { src: "/assets/carousel-11.png", alt: "Defender mountain tour colouring page" },
+  { src: "/assets/carousel-12.png", alt: "Shades kid colouring page" },
+  { src: "/assets/carousel-13.png", alt: "Towel baby colouring page" },
+  { src: "/assets/carousel-14.png", alt: "Bride with bouquet colouring page" },
+  { src: "/assets/carousel-15.png", alt: "Lifting husband with pregnant wife colouring page" },
+  { src: "/assets/carousel-16.png", alt: "Wedding couple close up colouring page" }
 ];
 
 export default function Hero({ navigate }: HeroProps) {

@@ -116,7 +116,7 @@ export default function Policies({ navigate }: PoliciesProps) {
                     </section>
 
                     <p className="text-xs text-muted-foreground/75 pt-4 border-t border-border/40">
-                      This policy was last updated March 2026. By using our site, you agree to these terms. Changes will be posted here—continued use means acceptance.
+                      This policy was last updated March 2026. By using our site, you agree to these terms. Changes will be posted here, continued use means acceptance.
                     </p>
                   </div>
                 </div>
@@ -129,7 +129,7 @@ export default function Policies({ navigate }: PoliciesProps) {
 
                   <div className="space-y-5 text-muted-foreground leading-relaxed text-sm md:text-base font-sans">
                     <p>
-                      Thank you for choosing ColourMyMemories, where we create custom coloring books based on your personal stories, photos, and details. Because every book is made just for you, all sales are final—but don't worry, we've built a process that makes sure you're completely happy before anything goes to print! Here's how it works 👇
+                      Thank you for choosing ColourMyMemories, where we create custom coloring books based on your personal stories, photos, and details. Because every book is made just for you, all sales are final, but don't worry, we've built a process that makes sure you're completely happy before anything goes to print! Here's how it works 👇
                     </p>
 
                     <section className="space-y-2">
@@ -139,7 +139,7 @@ export default function Policies({ navigate }: PoliciesProps) {
                         <li>Agree to this policy.</li>
                         <li>Make payment and receive immediate confirmation.</li>
                         <li>Get a full digital copy to review for any changes.</li>
-                        <li>Approve (or request revisions—we'll adjust until you're satisfied!).</li>
+                        <li>Approve (or request revisions, we'll adjust until you're satisfied!).</li>
                         <li>We print and ship your approved custom book. 🎉</li>
                       </ol>
                     </section>
@@ -160,17 +160,17 @@ export default function Policies({ navigate }: PoliciesProps) {
                     <section className="space-y-2">
                       <h3 className="text-lg font-bold text-foreground font-sans">Revisions</h3>
                       <p>
-                        Not quite right? No problem! You can request changes on your digital proof and we'll revise it promptly at no extra cost—we keep going until you're happy. 😊
+                        Not quite right? No problem! You can request changes on your digital proof and we'll revise it promptly at no extra cost, we keep going until you're happy. 😊
                       </p>
                     </section>
 
                     <section className="space-y-2">
                       <h3 className="text-lg font-bold text-foreground font-sans">Shipping and Delays</h3>
                       <p>
-                        Shipping times after you approve your proof are estimates—unfortunately, we can't control carrier delays, but we do our best to keep things moving. You'll receive a tracking link via your confirmation email so you can follow your order every step of the way.
+                        Shipping times after you approve your proof are estimates, unfortunately, we can't control carrier delays, but we do our best to keep things moving. You'll receive a tracking link via your confirmation email so you can follow your order every step of the way.
                       </p>
                       <p className="pt-2">
-                        Questions? We're always happy to help—<a href="mailto:colourmymemories@gmail.com" className="text-primary hover:underline font-semibold">contact us</a> anytime!
+                        Questions? We're always happy to help, <a href="mailto:colourmymemories@gmail.com" className="text-primary hover:underline font-semibold">contact us</a> anytime!
                       </p>
                     </section>
 

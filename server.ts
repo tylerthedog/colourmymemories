@@ -2,6 +2,7 @@ import express from 'express';
 import path from 'path';
 import fs from 'fs';
 import { createServer as createViteServer } from 'vite';
+import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
 
 async function startServer() {
   const app = express();
@@ -142,6 +143,219 @@ async function startServer() {
     } catch (err) {
       console.error('Order checkout submission backend fail:', err);
       res.status(500).json({ error: 'Failed to process order.' });
+    }
+  });
+
+  // API Route: Secure Netlify/Serverless submit-order parity handler
+  app.post('/api/submit-order', async (req, res) => {
+    try {
+      const { details, photos, storyFile } = req.body;
+      if (!details || !details.customer_name || !details.email) {
+        res.status(400).json({ error: 'Missing customer details (name and email).' });
+        return;
+      }
+
+      if (!photos || !Array.isArray(photos) || photos.length === 0) {
+        res.status(400).json({ error: 'Please upload at least one photo.' });
+        return;
+      }
+
+      const orderId = `ORD_${Date.now()}_${Math.floor(100 + Math.random() * 900)}`;
+      const imageUrls: string[] = [];
+      let storyUrl = 'None';
+
+      const {
+        R2_ACCESS_KEY_ID,
+        R2_SECRET_ACCESS_KEY,
+        R2_ACCOUNT_ID,
+        R2_BUCKET_NAME,
+        GOOGLE_FORM_ACTION_URL,
+        GOOGLE_SHEET_API_URL
+      } = process.env;
+
+      const hasR2Config = R2_ACCESS_KEY_ID && R2_SECRET_ACCESS_KEY && R2_ACCOUNT_ID && R2_BUCKET_NAME;
+
+      const decodeBase64 = (base64String: string, fallbackType?: string) => {
+        const matches = base64String.match(/^data:([A-Za-z-+\/]+);base64,(.+)$/);
+        if (matches && matches.length === 3) {
+          return {
+            contentType: matches[1],
+            buffer: Buffer.from(matches[2], 'base64')
+          };
+        }
+        return {
+          contentType: fallbackType || 'application/octet-stream',
+          buffer: Buffer.from(base64String.replace(/^data:image\/\w+;base64,/, ''), 'base64')
+        };
+      };
+
+      if (hasR2Config) {
+        console.log('[R2 Config Secured] Initializing R2 upload process...');
+        const s3 = new S3Client({
+          region: 'auto',
+          endpoint: `https://${R2_ACCOUNT_ID}.r2.cloudflarestorage.com`,
+          credentials: {
+            accessKeyId: R2_ACCESS_KEY_ID!,
+            secretAccessKey: R2_SECRET_ACCESS_KEY!
+          }
+        });
+
+        for (let i = 0; i < photos.length; i++) {
+          const photo = photos[i];
+          if (!photo.base64Data) continue;
+
+          const { contentType, buffer } = decodeBase64(photo.base64Data, photo.type);
+          
+          let extension = 'png';
+          if (contentType && contentType.includes('/')) {
+            extension = contentType.split('/')[1];
+          } else if (photo.name && photo.name.includes('.')) {
+            extension = photo.name.split('.').pop()!;
+          }
+
+          const key = `orders/${orderId}/photo_${i + 1}.${extension}`;
+
+          await s3.send(new PutObjectCommand({
+            Bucket: R2_BUCKET_NAME,
+            Key: key,
+            Body: buffer,
+            ContentType: contentType
+          }));
+
+          imageUrls.push(`https://${R2_BUCKET_NAME}.${R2_ACCOUNT_ID}.r2.cloudflarestorage.com/${key}`);
+        }
+
+        if (storyFile && storyFile.base64Data) {
+          const { contentType, buffer } = decodeBase64(storyFile.base64Data, storyFile.type);
+          
+          let extension = 'pdf';
+          if (storyFile.name && storyFile.name.includes('.')) {
+            extension = storyFile.name.split('.').pop()!;
+          }
+
+          const key = `orders/${orderId}/story_document.${extension}`;
+
+          await s3.send(new PutObjectCommand({
+            Bucket: R2_BUCKET_NAME,
+            Key: key,
+            Body: buffer,
+            ContentType: contentType
+          }));
+
+          storyUrl = `https://${R2_BUCKET_NAME}.${R2_ACCOUNT_ID}.r2.cloudflarestorage.com/${key}`;
+        }
+      } else {
+        console.warn('[R2 Config Missing] Saving file payloads locally inside the orders directory as developer fallback.');
+        
+        const photosDir = path.join(ordersDir, `photos_${orderId}`);
+        fs.mkdirSync(photosDir, { recursive: true });
+
+        photos.forEach((photo: any, index: number) => {
+          try {
+            const { contentType, buffer } = decodeBase64(photo.base64Data, photo.type);
+            let extension = 'png';
+            if (contentType && contentType.includes('/')) {
+              extension = contentType.split('/')[1];
+            }
+            const photoPath = path.join(photosDir, `photo_${index + 1}.${extension}`);
+            fs.writeFileSync(photoPath, buffer);
+            imageUrls.push(`/orders/photos_${orderId}/photo_${index + 1}.${extension}`);
+          } catch (innerErr) {
+            console.error(`Local backup photo dump failed for photo ${index}:`, innerErr);
+          }
+        });
+
+        if (storyFile) {
+          try {
+            const { contentType, buffer } = decodeBase64(storyFile.base64Data, storyFile.type);
+            let extension = 'pdf';
+            if (storyFile.name && storyFile.name.includes('.')) {
+              extension = storyFile.name.split('.').pop()!;
+            }
+            const storyPath = path.join(photosDir, `story_document.${extension}`);
+            fs.writeFileSync(storyPath, buffer);
+            storyUrl = `/orders/photos_${orderId}/story_document.${extension}`;
+          } catch (storyErr) {
+            console.error('Local backup story dump failed:', storyErr);
+          }
+        }
+      }
+
+      const listPath = path.join(ordersDir, 'orders_index.json');
+      let ordersList: any[] = [];
+      if (fs.existsSync(listPath)) {
+        try {
+          ordersList = JSON.parse(fs.readFileSync(listPath, 'utf-8'));
+        } catch {
+          ordersList = [];
+        }
+      }
+      ordersList.unshift({
+        id: orderId,
+        customer_name: details.customer_name,
+        email: details.email,
+        phone: details.phone || '',
+        photoCount: photos.length,
+        timestamp: new Date().toISOString()
+      });
+      fs.writeFileSync(listPath, JSON.stringify(ordersList, null, 2));
+
+      const formActionUrl = GOOGLE_FORM_ACTION_URL || GOOGLE_SHEET_API_URL || 'https://google.com';
+      console.log(`[Google Form Submission] Sending background POST to ${formActionUrl}...`);
+
+      const formParams = new URLSearchParams();
+      // Name Entry ID: entry.1474310025
+      formParams.append('entry.1474310025', details.customer_name || '');
+      // Email Entry ID: entry.1193537937
+      formParams.append('entry.1193537937', details.email || '');
+      // Phone Entry ID: entry.1082449212
+      formParams.append('entry.1082449212', details.phone || '');
+
+      // Story Details Entry ID: entry.1137043253
+      let storyContent = details.story || '';
+      if (imageUrls && imageUrls.length > 0) {
+        storyContent += `\n\n[R2 Image URLs]:\n${imageUrls.join('\n')}`;
+      }
+      if (storyUrl && storyUrl !== 'None') {
+        storyContent += `\n\n[Story File URL]: ${storyUrl}`;
+      }
+      // Also include delivery address details inside the story content to ensure it is stored elegantly
+      const addressStr = `${details.street || ''}, ${details.city || ''}, ${details.province || ''}, ${details.postal_code || ''}, ${details.country || 'South Africa'}`;
+      storyContent += `\n\n[Shipping Address]: ${addressStr}`;
+      storyContent += `\n\n[Order ID]: ${orderId}`;
+      storyContent += `\n[Timestamp]: ${new Date().toISOString()}`;
+
+      formParams.append('entry.1137043253', storyContent);
+
+      try {
+        const gFormResponse = await fetch(formActionUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded'
+          },
+          body: formParams.toString()
+        });
+
+        if (!gFormResponse.ok) {
+          const errText = await gFormResponse.text();
+          console.warn('Google Forms did not respond with OK status:', errText);
+        } else {
+          console.log('[Google Form Submission] Completed successfully!');
+        }
+      } catch (formErr: any) {
+        console.warn('Google Forms submission background warning (non-fatal):', formErr.message);
+      }
+
+      console.log(`[Submit-Order Completed ✓] ID: ${orderId}, Name: ${details.customer_name}`);
+      res.status(200).json({
+        status: 'ok',
+        orderId,
+        imageUrls,
+        storyUrl
+      });
+    } catch (err: any) {
+      console.error('Submit order backend crash:', err);
+      res.status(500).json({ error: 'Failed to process order connection.', message: err.message });
     }
   });
 

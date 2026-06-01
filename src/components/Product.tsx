@@ -30,7 +30,7 @@ export default function Product({ navigate }: ProductProps) {
                 <div className="absolute -inset-4 gradient-rainbow rounded-[2.5rem] opacity-30 blur-2xl" />
                 <div className="relative bg-card rounded-[2rem] overflow-hidden shadow-card border-4 border-primary/20 p-6">
                   <img 
-                    src="/assets/carousel-10-BCFju6sL.png" 
+                    src="/assets/carousel-16.png" 
                     alt="Wedding couple custom colouring page" 
                     className="w-full h-auto rounded-3xl"
                     referrerPolicy="no-referrer"

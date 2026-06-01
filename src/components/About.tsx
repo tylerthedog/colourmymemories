@@ -39,7 +39,7 @@ export default function About() {
                 About <span className="text-gradient-rainbow">ColourMy</span><span className="text-foreground">Memories</span>
               </h2>
               <p className="text-lg text-muted-foreground leading-relaxed">
-                Bring your family's memories to life! We transform your personal photos—from babies and weddings to cherished moments with loved ones—along with your unique background stories into one-of-a-kind colouring storybooks.
+                Bring your family's memories to life! We transform your personal photos, from babies and weddings to cherished moments with loved ones, along with your unique background stories into one-of-a-kind colouring storybooks.
               </p>
               <p className="text-lg text-muted-foreground leading-relaxed">
                 Perfect as heartfelt gifts or meaningful self-treats for all ages, these custom creations offer screen-free creativity and joy through colouring.

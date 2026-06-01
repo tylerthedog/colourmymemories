@@ -27,7 +27,7 @@ export default function Testimonials() {
       name: "Emma",
       type: "Self-Treat",
       avatar: "🎨",
-      text: "Bought one for myself using old family photos—therapeutic and nostalgic! The quality paper takes colour beautifully.",
+      text: "Bought one for myself using old family photos, therapeutic and nostalgic! The quality paper takes colour beautifully.",
       rating: 5
     },
     {
