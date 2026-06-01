@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { ArrowLeft, Upload, Loader2, CheckCircle2, Image as ImageIcon, Trash2 } from 'lucide-react';
+import { ArrowLeft, Upload, Loader2, CheckCircle2, Image as ImageIcon, Trash2, CreditCard, Copy, Check, ExternalLink, Lock } from 'lucide-react';
 import StoryHelper from './StoryHelper';
 
 interface OrderFormProps {
@@ -41,6 +41,9 @@ export default function OrderForm({ navigate }: OrderFormProps) {
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [backendError, setBackendError] = useState('');
+
+  const [submittedOrderId, setSubmittedOrderId] = useState('');
+  const [copiedField, setCopiedField] = useState('');
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -134,45 +137,67 @@ export default function OrderForm({ navigate }: OrderFormProps) {
     setIsSubmitting(true);
 
     try {
-      // Read photos as base64 array
-      const photoPayloads = await Promise.all(
-        photos.map(async (file) => {
-          const b64 = await fileToBase64(file);
-          return {
-            name: file.name,
-            type: file.type,
-            size: file.size,
-            base64Data: b64
-          };
-        })
-      );
+      // 1. Generate a unique dynamic order ID
+      const timestampPart = Date.now().toString().slice(-6);
+      const randPart = Math.floor(100 + Math.random() * 900);
+      const orderId = `CMM-${timestampPart}-${randPart}`;
 
-      // Read story file as base64 if present
-      let storyFilePayload = null;
+      // 2. Format Story Details content: Bundling story, email, list of uploaded files as details
+      let storyDetailsContent = `=== STORY/BOOK DESCRIPTION ===\n${formData.story || 'No text story provided.'}\n\n`;
+      storyDetailsContent += `=== CLIENT INFORMATION ===\n`;
+      storyDetailsContent += `Email: ${formData.email}\n`;
+      storyDetailsContent += `Phone: ${formData.phone || 'None'}\n\n`;
+      
+      storyDetailsContent += `=== UPLOADED MEDIA ASSETS ===\n`;
       if (storyFile) {
-        const b64 = await fileToBase64(storyFile);
-        storyFilePayload = {
-          name: storyFile.name,
-          type: storyFile.type,
-          size: storyFile.size,
-          base64Data: b64
-        };
+        storyDetailsContent += `Narrative File: ${storyFile.name} (${(storyFile.size / 1024).toFixed(1)} KB)\n`;
+      } else {
+        storyDetailsContent += `Narrative File: None Provided\n`;
       }
+      
+      if (photos.length > 0) {
+        storyDetailsContent += `Total Photos Attached: ${photos.length}\n`;
+        photos.forEach((file, index) => {
+          storyDetailsContent += ` - File #${index + 1}: ${file.name} (${(file.size / 1024).toFixed(1)} KB)\n`;
+        });
+      } else {
+        storyDetailsContent += `Photos Attached: None\n`;
+      }
+      storyDetailsContent += `\n[Reference ID: ${orderId}]`;
 
-      const response = await fetch('/api/submit-order', {
+      // 3. Build Google Form matching parameters
+      const formParams = new URLSearchParams();
+      // - Full Name ID: entry.1474310025
+      formParams.append('entry.1474310025', formData.customer_name);
+      // - Phone Number ID: entry.1082449212
+      formParams.append('entry.1082449212', formData.phone || '');
+      // - Street Address ID: entry.577022071
+      formParams.append('entry.577022071', formData.street);
+      // - City ID: entry.1697465648
+      formParams.append('entry.1697465648', formData.city);
+      // - Province ID: entry.1493182288
+      formParams.append('entry.1493182288', formData.province);
+      // - Postal Code ID: entry.1143424652
+      formParams.append('entry.1143424652', formData.postal_code);
+      // - Country ID: entry.1691663973
+      formParams.append('entry.1691663973', formData.country);
+      // - Story Details ID: entry.1137043253
+      formParams.append('entry.1137043253', storyDetailsContent);
+
+      const targetUrl = process.env.GOOGLE_FORM_ACTION_URL || 'https://docs.google.com/forms/u/0/d/e/1FAIpQLSd-placeholder/formResponse';
+
+      // 4. Submit via direct background fetch using mode: 'no-cors'
+      await fetch(targetUrl, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          details: formData,
-          photos: photoPayloads,
-          storyFile: storyFilePayload
-        })
+        mode: 'no-cors',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded'
+        },
+        body: formParams.toString()
       });
 
-      if (!response.ok) {
-        throw new Error('Server returned error status');
-      }
-
+      // 5. Update state on successful completion to advance the user directly to the payment view
+      setSubmittedOrderId(orderId);
       setIsSubmitted(true);
       window.scrollTo({ top: 0 });
     } catch (err) {
@@ -184,28 +209,173 @@ export default function OrderForm({ navigate }: OrderFormProps) {
   };
 
   if (isSubmitted) {
+    const handleCopyText = (text: string, fieldName: string) => {
+      navigator.clipboard.writeText(text).then(() => {
+        setCopiedField(fieldName);
+        setTimeout(() => setCopiedField(''), 2000);
+      }).catch((err) => {
+        console.error('Failed to copy text:', err);
+      });
+    };
+
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center px-4 py-16">
-        <div className="text-center max-w-md space-y-6 animate-fade-in-up">
-          <div className="w-16 h-16 bg-accent/15 text-accent flex items-center justify-center mx-auto rounded-full shadow-soft">
-            <CheckCircle2 className="w-10 h-10" />
+      <div className="min-h-screen bg-gradient-to-br from-background via-muted/30 to-background flex items-center justify-center px-4 py-12 md:py-20">
+        <div className="max-w-2xl w-full bg-card rounded-3xl border border-border p-6 md:p-10 shadow-card animate-fade-in-up space-y-8">
+          {/* Header Status */}
+          <div className="text-center space-y-3">
+            <div className="w-16 h-16 bg-accent/15 text-accent flex items-center justify-center mx-auto rounded-full shadow-soft animate-scale-in">
+              <CheckCircle2 className="w-10 h-10" />
+            </div>
+            <h1 className="text-3xl font-extrabold tracking-tight">
+              Order Received! <span className="text-gradient-rainbow">Next Step Below</span>
+            </h1>
+            <p className="text-muted-foreground text-sm max-w-sm mx-auto">
+              Your custom colouring book draft has been registered. Please complete the EFT payment below so we can start generating your custom illustratons.
+            </p>
           </div>
-          <h1 className="text-3xl font-bold">
-            <span className="text-gradient-rainbow">Thank You!</span>
-          </h1>
-          <p className="text-muted-foreground text-lg leading-relaxed">
-            Your order has been submitted successfully to our South African design studio. We'll be in touch soon via email or WhatsApp to confirm your details, provide digital proofing, and arrange the EFT / PayFast payment details. 🎉
-          </p>
-          <button
-            onClick={() => {
-              navigate('/');
-              window.scrollTo({ top: 0 });
-            }}
-            className="inline-flex items-center px-8 py-3 rounded-xl text-sm font-bold shadow-soft gradient-primary text-primary-foreground transform active:scale-95 duration-200 cursor-pointer"
-          >
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            Back to Home
-          </button>
+
+          {/* Reference Banner */}
+          <div className="bg-muted/30 border border-border/80 rounded-2xl p-5 flex flex-col sm:flex-row justify-between items-center gap-4">
+            <div className="w-full sm:w-auto text-center sm:text-left">
+              <p className="text-xs uppercase tracking-wider text-muted-foreground font-bold">Your Order Reference ID</p>
+              <p className="text-lg font-mono font-bold text-foreground mt-0.5">{submittedOrderId || 'CMM-ORDER-PENDING'}</p>
+            </div>
+            <div className="w-full sm:w-auto flex justify-center">
+              <button
+                type="button"
+                onClick={() => handleCopyText(submittedOrderId || 'CMM-ORDER-PENDING', 'refid')}
+                className="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 px-4 h-10 rounded-xl text-xs font-bold border border-border bg-card hover:bg-muted text-foreground transition-all duration-200 cursor-pointer shadow-subtle active:scale-95 whitespace-nowrap"
+              >
+                {copiedField === 'refid' ? (
+                  <>
+                    <Check className="w-3.5 h-3.5 text-accent animate-scale-in" />
+                    <span className="text-accent font-bold">Copied Ref ID!</span>
+                  </>
+                ) : (
+                  <>
+                    <Copy className="w-3.5 h-3.5" />
+                    <span>Copy Reference ID</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+
+          {/* EFT Bank details */}
+          <div className="space-y-4">
+            <div className="flex items-center gap-2">
+              <CreditCard className="w-5 h-5 text-primary" />
+              <h2 className="text-lg font-bold text-foreground">Direct Bank Transfer (EFT)</h2>
+            </div>
+
+            <div className="grid gap-3.5 sm:grid-cols-2">
+              {/* Account Name */}
+              <div className="bg-muted/10 border border-border/50 rounded-xl p-4 flex justify-between items-center group relative">
+                <div>
+                  <span className="text-xs text-muted-foreground/80 block font-semibold mb-0.5">Account Holder Name</span>
+                  <span className="text-sm font-bold text-foreground">ColourMyMemories</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => handleCopyText('ColourMyMemories', 'holder')}
+                  className="w-8 h-8 rounded-lg hover:bg-muted/65 flex items-center justify-center text-muted-foreground/60 hover:text-foreground transition-colors cursor-pointer"
+                  title="Copy Name"
+                >
+                  {copiedField === 'holder' ? <Check className="w-3.5 h-3.5 text-accent animate-scale-in" /> : <Copy className="w-3.5 h-3.5" />}
+                </button>
+              </div>
+
+              {/* Bank Name */}
+              <div className="bg-muted/10 border border-border/50 rounded-xl p-4 flex justify-between items-center group relative">
+                <div>
+                  <span className="text-xs text-muted-foreground/80 block font-semibold mb-0.5">Bank Name</span>
+                  <span className="text-sm font-bold text-foreground">First National Bank (FNB)</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => handleCopyText('First National Bank', 'bank')}
+                  className="w-8 h-8 rounded-lg hover:bg-muted/65 flex items-center justify-center text-muted-foreground/60 hover:text-foreground transition-colors cursor-pointer"
+                  title="Copy Bank"
+                >
+                  {copiedField === 'bank' ? <Check className="w-3.5 h-3.5 text-accent animate-scale-in" /> : <Copy className="w-3.5 h-3.5" />}
+                </button>
+              </div>
+
+              {/* Account Number */}
+              <div className="bg-muted/10 border border-border/50 rounded-xl p-4 flex justify-between items-center group relative font-semibold">
+                <div>
+                  <span className="text-xs text-muted-foreground/80 block font-semibold mb-0.5">Account Number</span>
+                  <span className="text-sm font-mono font-bold text-foreground">63098521043</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => handleCopyText('63098521043', 'acnum')}
+                  className="w-8 h-8 rounded-lg hover:bg-muted/65 flex items-center justify-center text-muted-foreground/60 hover:text-foreground transition-colors cursor-pointer"
+                  title="Copy Account Number"
+                >
+                  {copiedField === 'acnum' ? <Check className="w-3.5 h-3.5 text-accent animate-scale-in" /> : <Copy className="w-3.5 h-3.5" />}
+                </button>
+              </div>
+
+              {/* Branch Code */}
+              <div className="bg-muted/10 border border-border/50 rounded-xl p-4 flex justify-between items-center group relative font-semibold">
+                <div>
+                  <span className="text-xs text-muted-foreground/80 block font-semibold mb-0.5">Branch Code</span>
+                  <span className="text-sm font-mono font-bold text-foreground">250655</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => handleCopyText('250655', 'bcode')}
+                  className="w-8 h-8 rounded-lg hover:bg-muted/65 flex items-center justify-center text-muted-foreground/60 hover:text-foreground transition-colors cursor-pointer"
+                  title="Copy Branch Code"
+                >
+                  {copiedField === 'bcode' ? <Check className="w-3.5 h-3.5 text-accent animate-scale-in" /> : <Copy className="w-3.5 h-3.5" />}
+                </button>
+              </div>
+            </div>
+
+            {/* Reference Warning */}
+            <div className="bg-amber-500/10 border border-amber-500/20 text-amber-600 rounded-2xl p-4 md:p-5 text-sm leading-relaxed font-sans flex gap-3 shadow-sm">
+              <Lock className="w-5 h-5 shrink-0 text-amber-500 mt-0.5" />
+              <div>
+                <strong>Deposit Reference Requirement:</strong> Please use your reference code <span className="font-mono bg-amber-500/10 px-1 py-0.5 rounded font-bold">{submittedOrderId || 'CMM-XXXXXX'}</span>. E-mail your proof of transfer to <strong className="font-semibold text-amber-700">tylerjohnhellyer@gmail.com</strong> or WhatsApp it below to fast-track your book's curation.
+              </div>
+            </div>
+          </div>
+
+          {/* Pricing Info Note */}
+          <div className="border-t border-border/70 pt-6 space-y-4">
+            <h3 className="text-sm font-bold text-foreground">What happens next?</h3>
+            <ol className="text-xs text-muted-foreground space-y-2 list-decimal list-inside pl-1 leading-relaxed">
+              <li>Once payment triggers, our artists begin turning your memories into custom black &amp; white colouring sheets.</li>
+              <li>Within 5–7 days, we'll email or WhatsApp you a digital proofing preview.</li>
+              <li>You can request revisions to the drawings and texts until you are 100% satisfied.</li>
+              <li>Only after your explicit sign-off do we proceed to print, bind, and ship your A5 book nationwide.</li>
+            </ol>
+          </div>
+
+          {/* Action buttons */}
+          <div className="flex flex-col sm:flex-row gap-3 pt-2">
+            <button
+              onClick={() => {
+                navigate('/');
+                window.scrollTo({ top: 0 });
+              }}
+              className="flex-1 inline-flex items-center justify-center h-12 rounded-xl text-xs font-bold border border-border bg-card hover:bg-muted text-foreground transition-all duration-200 cursor-pointer shadow-subtle active:scale-97"
+            >
+              <ArrowLeft className="w-3.5 h-3.5 mr-2" />
+              Return to Homepage
+            </button>
+            <a
+              href={`https://wa.me/27608291485?text=Hi%20ColourMyMemories%2C%20I've%20just%20submitted%20an%20order!%20My%20Reference%20is%20${encodeURIComponent(submittedOrderId || 'CMM-ORDER')}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex-1 inline-flex items-center justify-center h-12 rounded-xl text-xs font-bold bg-[#25D366] hover:bg-[#20ba5a] text-white transition-all duration-200 cursor-pointer shadow-soft active:scale-97"
+            >
+              <ExternalLink className="w-3.5 h-3.5 mr-2" />
+              WhatsApp Proof of Payment
+            </a>
+          </div>
         </div>
       </div>
     );

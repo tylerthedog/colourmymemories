@@ -5,6 +5,9 @@ import {defineConfig} from 'vite';
 
 export default defineConfig(() => {
   return {
+    define: {
+      'process.env.GOOGLE_FORM_ACTION_URL': JSON.stringify(process.env.GOOGLE_FORM_ACTION_URL || ''),
+    },
     plugins: [react(), tailwindcss()],
     resolve: {
       alias: {
