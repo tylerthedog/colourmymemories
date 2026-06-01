@@ -66,6 +66,8 @@ exports.handler = async function (event, context) {
       };
     }
 
+    // Active Google Form Submission Target (Form ID: 18ZKSKgySU6BbPIHsZI6sDjAt8N8vDw4vdD9gzp5iQNw)
+    // Specifying the precise destination endpoint URL for user data submission.
     const formActionUrl = "https://docs.google.com/forms/d/18ZKSKgySU6BbPIHsZI6sDjAt8N8vDw4vdD9gzp5iQNw/formResponse";
 
     // Initialize Cloudflare R2 (S3 Compatible Client)
@@ -164,6 +166,9 @@ exports.handler = async function (event, context) {
     formParams.append('entry.1143424652', details.postal_code || '');
     // - Country ID: entry.1691663973
     formParams.append('entry.1691663973', details.country || 'South Africa');
+    
+    // If built-in email collection is enabled on Google Forms, append the email address
+    formParams.append('emailAddress', details.email || '');
     
     // - Story Details ID: entry.1137043253
     let storyContent = details.story || '';

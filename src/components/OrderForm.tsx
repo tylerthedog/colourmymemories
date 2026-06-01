@@ -183,7 +183,12 @@ export default function OrderForm({ navigate }: OrderFormProps) {
       formParams.append('entry.1691663973', formData.country);
       // - Story Details ID: entry.1137043253
       formParams.append('entry.1137043253', storyDetailsContent);
+      
+      // If built-in email collection is enabled on Google Forms, append the email address
+      formParams.append('emailAddress', formData.email);
 
+      // Active Google Form Submission Target (Form ID: 18ZKSKgySU6BbPIHsZI6sDjAt8N8vDw4vdD9gzp5iQNw)
+      // Specifying the precise destination endpoint URL for user data submission.
       const targetUrl = "https://docs.google.com/forms/d/18ZKSKgySU6BbPIHsZI6sDjAt8N8vDw4vdD9gzp5iQNw/formResponse";
 
       // 4. Submit via direct background fetch using mode: 'no-cors'
