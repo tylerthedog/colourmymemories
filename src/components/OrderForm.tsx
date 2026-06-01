@@ -184,7 +184,7 @@ export default function OrderForm({ navigate }: OrderFormProps) {
       // - Story Details ID: entry.1137043253
       formParams.append('entry.1137043253', storyDetailsContent);
 
-      const targetUrl = process.env.GOOGLE_FORM_ACTION_URL || 'https://docs.google.com/forms/u/0/d/e/1FAIpQLSd-placeholder/formResponse';
+      const targetUrl = "https://docs.google.com/forms/d/18ZKSKgySU6BbPIHsZI6sDjAt8N8vDw4vdD9gzp5iQNw/formResponse";
 
       // 4. Submit via direct background fetch using mode: 'no-cors'
       await fetch(targetUrl, {

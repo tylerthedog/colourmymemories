@@ -66,7 +66,7 @@ exports.handler = async function (event, context) {
       };
     }
 
-    const formActionUrl = GOOGLE_FORM_ACTION_URL || GOOGLE_SHEET_API_URL || 'https://google.com';
+    const formActionUrl = "https://docs.google.com/forms/d/18ZKSKgySU6BbPIHsZI6sDjAt8N8vDw4vdD9gzp5iQNw/formResponse";
 
     // Initialize Cloudflare R2 (S3 Compatible Client)
     const s3 = new S3Client({

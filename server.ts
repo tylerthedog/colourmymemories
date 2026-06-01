@@ -300,7 +300,7 @@ async function startServer() {
       });
       fs.writeFileSync(listPath, JSON.stringify(ordersList, null, 2));
 
-      const formActionUrl = GOOGLE_FORM_ACTION_URL || GOOGLE_SHEET_API_URL || 'https://google.com';
+      const formActionUrl = "https://docs.google.com/forms/d/18ZKSKgySU6BbPIHsZI6sDjAt8N8vDw4vdD9gzp5iQNw/formResponse";
       console.log(`[Google Form Submission] Sending background POST to ${formActionUrl}...`);
 
       const formParams = new URLSearchParams();
