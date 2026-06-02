@@ -66,9 +66,9 @@ exports.handler = async function (event, context) {
       };
     }
 
-    // Active Google Form Submission Target (Form ID: 18ZKSKgySU6BbPIHsZI6sDjAt8N8vDw4vdD9gzp5iQNw)
+    // Active Google Form Submission Target (Form ID: 1FAIpQLSf9c_gsjPPnxFNN5SGK8i1cqI4P-kx29RF6jKGZ47ZVJrPn2A)
     // Specifying the precise destination endpoint URL for user data submission.
-    const formActionUrl = "https://docs.google.com/forms/d/18ZKSKgySU6BbPIHsZI6sDjAt8N8vDw4vdD9gzp5iQNw/formResponse";
+    const formActionUrl = "https://docs.google.com/forms/d/e/1FAIpQLSf9c_gsjPPnxFNN5SGK8i1cqI4P-kx29RF6jKGZ47ZVJrPn2A/formResponse";
 
     // Initialize Cloudflare R2 (S3 Compatible Client)
     const s3 = new S3Client({

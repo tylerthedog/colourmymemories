@@ -300,9 +300,9 @@ async function startServer() {
       });
       fs.writeFileSync(listPath, JSON.stringify(ordersList, null, 2));
 
-      // Active Google Form Submission Target (Form ID: 18ZKSKgySU6BbPIHsZI6sDjAt8N8vDw4vdD9gzp5iQNw)
+      // Active Google Form Submission Target (Form ID: 1FAIpQLSf9c_gsjPPnxFNN5SGK8i1cqI4P-kx29RF6jKGZ47ZVJrPn2A)
       // Specifying the precise destination endpoint URL for user data submission.
-      const formActionUrl = "https://docs.google.com/forms/d/18ZKSKgySU6BbPIHsZI6sDjAt8N8vDw4vdD9gzp5iQNw/formResponse";
+      const formActionUrl = "https://docs.google.com/forms/d/e/1FAIpQLSf9c_gsjPPnxFNN5SGK8i1cqI4P-kx29RF6jKGZ47ZVJrPn2A/formResponse";
       console.log(`[Google Form Submission] Sending background POST to ${formActionUrl}...`);
 
       const formParams = new URLSearchParams();

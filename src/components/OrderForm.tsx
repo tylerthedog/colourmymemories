@@ -33,6 +33,8 @@ export default function OrderForm({ navigate }: OrderFormProps) {
     country: 'South Africa'
   });
 
+  const [submissionMode, setSubmissionMode] = useState<'interactive' | 'embed'>('interactive');
+
   const [photos, setPhotos] = useState<File[]>([]);
   const [photoPreviews, setPhotoPreviews] = useState<string[]>([]);
   const [storyFile, setStoryFile] = useState<File | null>(null);
@@ -176,7 +178,7 @@ export default function OrderForm({ navigate }: OrderFormProps) {
 
       const form = document.createElement('form');
       form.method = 'POST';
-      form.action = 'https://docs.google.com/forms/d/18ZKSKgySU6BbPIHsZI6sDjAt8N8vDw4vdD9gzp5iQNw/formResponse';
+      form.action = 'https://docs.google.com/forms/d/e/1FAIpQLSf9c_gsjPPnxFNN5SGK8i1cqI4P-kx29RF6jKGZ47ZVJrPn2A/formResponse';
       form.target = 'google_form_iframe';
 
       const fields: Record<string, string> = {
@@ -491,6 +493,34 @@ export default function OrderForm({ navigate }: OrderFormProps) {
           </p>
         </div>
 
+        {/* Submission Mode Selector */}
+        <div className="flex justify-center mb-10 animate-fade-in-up">
+          <div className="bg-card p-1 text-center rounded-2xl border border-border flex gap-1 inline-flex shadow-sm">
+            <button
+              type="button"
+              onClick={() => setSubmissionMode('interactive')}
+              className={`px-5 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all duration-300 cursor-pointer ${
+                submissionMode === 'interactive'
+                  ? 'bg-primary text-primary-foreground shadow-soft scale-[1.02]'
+                  : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
+              }`}
+            >
+              Interactive Story Wizard
+            </button>
+            <button
+              type="button"
+              onClick={() => setSubmissionMode('embed')}
+              className={`px-5 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all duration-300 cursor-pointer ${
+                submissionMode === 'embed'
+                  ? 'bg-primary text-primary-foreground shadow-soft scale-[1.02]'
+                  : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
+              }`}
+            >
+              Direct Google Form (Embedded)
+            </button>
+          </div>
+        </div>
+
         {backendError && (
           <div className="mb-6 p-4 bg-destructive/10 border-2 border-destructive/20 text-destructive text-sm rounded-2xl flex items-center gap-2 animate-scale-in">
             <CheckCircle2 className="w-5 h-5 shrink-0 rotate-45" />
@@ -498,7 +528,63 @@ export default function OrderForm({ navigate }: OrderFormProps) {
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="space-y-8 animate-fade-in-up">
+        {submissionMode === 'embed' ? (
+          <div className="space-y-6 animate-fade-in-up">
+            <div className="bg-card rounded-2xl border border-border p-6 shadow-soft space-y-4">
+              <h2 className="text-xl font-bold text-foreground">Direct Google Form Submission</h2>
+              <p className="text-sm text-muted-foreground">
+                Prefer to provide your order information directly in the official Google Form? You can fill it out below. Once done, proceed to the EFT payment instructions on this page.
+              </p>
+              
+              <div className="rounded-2xl overflow-hidden border border-border/80 bg-white">
+                <iframe 
+                  src="https://docs.google.com/forms/d/e/1FAIpQLSf9c_gsjPPnxFNN5SGK8i1cqI4P-kx29RF6jKGZ47ZVJrPn2A/viewform?embedded=true" 
+                  width="100%" 
+                  height="850" 
+                  className="w-full h-[850px] border-0"
+                  title="Direct Google Form"
+                >
+                  Loading…
+                </iframe>
+              </div>
+            </div>
+
+            {/* Direct Bank details / Next steps shown helper for direct form submitters */}
+            <div className="bg-card rounded-2xl border border-border p-6 shadow-soft space-y-5">
+              <h2 className="text-lg font-bold text-foreground">Payment Instructions (EFT)</h2>
+              <p className="text-sm text-muted-foreground">
+                After submitting the Google Form above, please use the following EFT details to finalize your custom book order. 
+              </p>
+              
+              <div className="grid gap-3.5 sm:grid-cols-2 font-semibold font-mono">
+                <div className="bg-muted/10 border border-border/50 rounded-xl p-4 font-sans">
+                  <span className="text-xs text-muted-foreground/80 block font-semibold mb-0.5">Account Holder Name</span>
+                  <span className="text-sm font-bold text-foreground font-sans">ColourMyMemories</span>
+                </div>
+                <div className="bg-muted/10 border border-border/50 rounded-xl p-4 font-sans">
+                  <span className="text-xs text-muted-foreground/80 block font-semibold mb-0.5">Bank Name</span>
+                  <span className="text-sm font-bold text-foreground font-sans">First National Bank (FNB)</span>
+                </div>
+                <div className="bg-muted/10 border border-border/50 rounded-xl p-4">
+                  <span className="text-xs text-muted-foreground/80 block font-sans font-semibold mb-0.5">Account Number</span>
+                  <span className="text-sm font-bold text-foreground">63098521043</span>
+                </div>
+                <div className="bg-muted/10 border border-border/50 rounded-xl p-4">
+                  <span className="text-xs text-muted-foreground/80 block font-sans font-semibold mb-0.5">Branch Code</span>
+                  <span className="text-sm font-bold text-foreground">250655</span>
+                </div>
+              </div>
+              
+              <div className="bg-amber-500/10 border border-amber-500/20 text-amber-600 rounded-2xl p-4 text-sm leading-relaxed flex gap-3 shadow-sm">
+                <Lock className="w-5 h-5 shrink-0 text-amber-500 mt-0.5" />
+                <div>
+                  <strong>Proof of payment:</strong> Please email your payment confirmation to <strong className="font-semibold text-amber-700">tylerjohnhellyer@gmail.com</strong> or WhatsApp it to <strong className="font-semibold text-amber-700">+27 60 829 1485</strong> with your Full Name as reference so we can link your payment to your Google Form response.
+                </div>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <form onSubmit={handleSubmit} className="space-y-8 animate-fade-in-up">
           {/* Card 1: Your Details */}
           <div className="bg-card rounded-2xl border border-border p-6 shadow-soft space-y-5">
             <div className="space-y-1">
@@ -716,6 +802,7 @@ export default function OrderForm({ navigate }: OrderFormProps) {
             )}
           </button>
         </form>
+        )}
       </div>
     </div>
   );
