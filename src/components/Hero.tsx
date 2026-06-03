@@ -6,21 +6,21 @@ interface HeroProps {
 }
 
 const carouselImages = [
-  { src: "https://lh3.googleusercontent.com/d/11iZfCQwCwP17ecZQIenIrwX_CYhO5oeD", alt: "Baby in car colouring page" },
-  { src: "https://lh3.googleusercontent.com/d/18F-YgfoZSXAZsGoh-LfKImCZ8xnCkqGv", alt: "Family portrait colouring page" },
-  { src: "https://lh3.googleusercontent.com/d/18xz4PJax8jnuT6CZhbV7U8_duzfs_2rq", alt: "Vibes baby colouring page" },
-  { src: "https://lh3.googleusercontent.com/d/19KD3JVUPC9BjOZT-z_velKDhi839WHgP", alt: "Ride-on car kid colouring page" },
-  { src: "https://lh3.googleusercontent.com/d/1DYHydDa7Xh9jgTkdT3fXYnP0jm-wEt_E", alt: "Kid with bucket on bike colouring page" },
-  { src: "https://lh3.googleusercontent.com/d/1IUbiVcu_M__9USCmrfVEfNrzXaVckHT4", alt: "Classic sports cars colouring page" },
-  { src: "https://lh3.googleusercontent.com/d/1O2rZ-5e3FT1D3vJcXxTz9V7v2ahApAUt", alt: "Malachi birthday cake colouring page" },
-  { src: "https://lh3.googleusercontent.com/d/1Zj8AoLGDYba2cvPXaLEvwi0GCPoQ08yM", alt: "Minecraft characters colouring page" },
-  { src: "https://lh3.googleusercontent.com/d/1biRsKUzjg8a2gWhZhO0pPq_d9THchXaz", alt: "Family walking together colouring page" },
-  { src: "https://lh3.googleusercontent.com/d/1dCPTiLFQvXnwhUdfbFci53P3DXIr8pVq", alt: "Defender mountain tour colouring page" },
-  { src: "https://lh3.googleusercontent.com/d/1lXgKrfnu87Hl4Za5-5POT7YvdBCgj4sY", alt: "Shades kid colouring page" },
-  { src: "https://lh3.googleusercontent.com/d/1mqltGoYhpgQ9hyTvYo4XbHpd2aPqEynu", alt: "Towel baby colouring page" },
-  { src: "https://lh3.googleusercontent.com/d/1oWYJr5nqnqnHVtLCMmW21QErGdvTy0af", alt: "Bride with bouquet colouring page" },
-  { src: "https://lh3.googleusercontent.com/d/1oZZ0GW3Jro2VAsHNY6P2meKLLFQF64iI", alt: "Lifting husband with pregnant wife colouring page" },
-  { src: "https://lh3.googleusercontent.com/d/1sGrdK-Ls7GzzvBIiGFblxxDtCMVaeH9E", alt: "Wedding couple close up colouring page" }
+  { src: "https://lh3.googleusercontent.com/d/10zodMpSvoYOz4VQASiN_9y8G2te1ydao", alt: "Personalised colouring book preview 1" },
+  { src: "https://lh3.googleusercontent.com/d/110Iqih7CBHkt7WowM4eEf1wWyvFUXozq", alt: "Personalised colouring book preview 2" },
+  { src: "https://lh3.googleusercontent.com/d/19tT02PH0vIJXsFxznx_1OnFOhv_lM0lV", alt: "Personalised colouring book preview 4" },
+  { src: "https://lh3.googleusercontent.com/d/1D6jlz9dSNQ78_dsTksEsIxGKw6u4sahn", alt: "Personalised colouring book preview 5" },
+  { src: "https://lh3.googleusercontent.com/d/1DoQqXiBAvPg33yCSXTlV-RVfrp2pNwlc", alt: "Personalised colouring book preview 6" },
+  { src: "https://lh3.googleusercontent.com/d/1LoRm0mR7QxgNdH4TqWbWE5eJYgOEMJPg", alt: "Personalised colouring book preview 7" },
+  { src: "https://lh3.googleusercontent.com/d/1MQRY-oPXsgsuHmI_TVpUcs_MZVwNiHRm", alt: "Personalised colouring book preview 8" },
+  { src: "https://lh3.googleusercontent.com/d/1NRsR1335eTa3Rx1GKwzR1Wv97DDFagLz", alt: "Personalised colouring book preview 9" },
+  { src: "https://lh3.googleusercontent.com/d/1OUrCLsKpSMHbRKuM-Yw7ud41qVC4P1aQ", alt: "Personalised colouring book preview 10" },
+  { src: "https://lh3.googleusercontent.com/d/1OxP8UM7hebjI1X8M75vl-NCkHOfF8IW2", alt: "Personalised colouring book preview 11" },
+  { src: "https://lh3.googleusercontent.com/d/1Qa7qApZHn3A6_Fpw7adPi3H0E-dBcGeN", alt: "Personalised colouring book preview 12" },
+  { src: "https://lh3.googleusercontent.com/d/1byOi3JAspQ4WwPCs39EnMLAtQ3xbKQSA", alt: "Personalised colouring book preview 13" },
+  { src: "https://lh3.googleusercontent.com/d/1d2-ziuEsgIzBxxpo8gFY-nNMEWm_F-XU", alt: "Personalised colouring book preview 14" },
+  { src: "https://lh3.googleusercontent.com/d/1uJJBC5TQqyjNBcCjmSnRDyMOliatBNyx", alt: "Personalised colouring book preview 15" },
+  { src: "https://lh3.googleusercontent.com/d/1vdm2Nyyq6gwAIZAHLPqmgwx7xVLCRYqa", alt: "Personalised colouring book preview 16" }
 ];
 
 export default function Hero({ navigate }: HeroProps) {

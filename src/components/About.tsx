@@ -73,7 +73,7 @@ export default function About() {
               <div className="absolute -inset-4 gradient-rainbow rounded-3xl opacity-20 blur-xl" />
               <div className="relative rounded-3xl overflow-hidden shadow-card border border-border bg-card p-4">
                 <img 
-                  src="https://lh3.googleusercontent.com/d/18xz4PJax8jnuT6CZhbV7U8_duzfs_2rq" 
+                  src="https://lh3.googleusercontent.com/d/10zodMpSvoYOz4VQASiN_9y8G2te1ydao" 
                   alt="Personalised colouring page family preview" 
                   className="w-full h-auto rounded-2xl"
                   referrerPolicy="no-referrer"

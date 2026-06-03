@@ -33,7 +33,7 @@ export default function HowItWorks() {
           <div className="relative animate-fade-in-up order-2 lg:order-1">
             <div className="rounded-3xl overflow-hidden shadow-card border-4 border-secondary/20 hover:scale-102 transition-transform duration-300">
               <img 
-                src="https://lh3.googleusercontent.com/d/19KD3JVUPC9BjOZT-z_velKDhi839WHgP" 
+                src="https://lh3.googleusercontent.com/d/110Iqih7CBHkt7WowM4eEf1wWyvFUXozq" 
                 alt="Child on bike colouring page" 
                 className="w-full h-auto"
                 referrerPolicy="no-referrer"

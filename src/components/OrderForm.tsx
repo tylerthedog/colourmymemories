@@ -198,6 +198,52 @@ export default function OrderForm({ navigate }: OrderFormProps) {
       return;
     }
 
+    const handleSuccess = async (response: any) => {
+      const reference = response ? (response.reference || response.trxref || '') : '';
+      console.log('[Paystack Secure OK] Reference:', reference);
+      try {
+        // Save transaction onto existing order confirmation database record on server
+        await fetch('/api/confirm-payment', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            reference: reference,
+            email: emailAddress,
+            name: cardName,
+            amount: finalCheckoutTotal
+          })
+        });
+
+        // Cache payment metrics locally for client thank-you page presentation
+        localStorage.setItem('last_paystack_payment', JSON.stringify({
+          reference: reference,
+          email: emailAddress,
+          amount: finalCheckoutTotal.toFixed(2),
+          name: cardName
+        }));
+
+        // Direct route transition to thank you view
+        navigate('/thank-you');
+      } catch (apiErr) {
+        console.error('Failure saving transaction confirmation securely:', apiErr);
+        localStorage.setItem('last_paystack_payment', JSON.stringify({
+          reference: reference,
+          email: emailAddress,
+          amount: finalCheckoutTotal.toFixed(2),
+          name: cardName
+        }));
+        navigate('/thank-you');
+      } finally {
+        setIsSubmitting(false);
+      }
+    };
+
+    const handleClose = () => {
+      console.log('Window closed');
+      setIsSubmitting(false);
+      setErrorMessage('Payment cancelled by user.');
+    };
+
     try {
       const paystack = new PaystackPop();
       paystack.newTransaction({
@@ -219,48 +265,10 @@ export default function OrderForm({ navigate }: OrderFormProps) {
             }
           ]
         },
-        onSuccess: async (transaction: any) => {
-          console.log('[Paystack Secure OK] Reference:', transaction.reference);
-          try {
-            // Save transaction onto existing order confirmation database record on server
-            await fetch('/api/confirm-payment', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                reference: transaction.reference,
-                email: emailAddress,
-                name: cardName,
-                amount: finalCheckoutTotal
-              })
-            });
-
-            // Cache payment metrics locally for client thank-you page presentation
-            localStorage.setItem('last_paystack_payment', JSON.stringify({
-              reference: transaction.reference,
-              email: emailAddress,
-              amount: finalCheckoutTotal.toFixed(2),
-              name: cardName
-            }));
-
-            // Direct route transition to thank you view
-            navigate('/thank-you');
-          } catch (apiErr) {
-            console.error('Failure saving transaction confirmation securely:', apiErr);
-            localStorage.setItem('last_paystack_payment', JSON.stringify({
-              reference: transaction.reference,
-              email: emailAddress,
-              amount: finalCheckoutTotal.toFixed(2),
-              name: cardName
-            }));
-            navigate('/thank-you');
-          } finally {
-            setIsSubmitting(false);
-          }
-        },
-        onCancel: () => {
-          setIsSubmitting(false);
-          setErrorMessage('Payment cancelled by user.');
-        }
+        callback: function(response: any) { handleSuccess(response); },
+        onSuccess: function(response: any) { handleSuccess(response); },
+        onClose: function() { handleClose(); },
+        onCancel: function() { handleClose(); }
       });
     } catch (ex) {
       console.warn('Paystack constructor failed - using inline popup setup fallback:', ex);
@@ -270,38 +278,10 @@ export default function OrderForm({ navigate }: OrderFormProps) {
           email: emailAddress,
           amount: finalAmountInCents,
           currency: 'ZAR',
-          callback: async (response: any) => {
-            try {
-              await fetch('/api/confirm-payment', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                  reference: response.reference,
-                  email: emailAddress,
-                  name: cardName,
-                  amount: finalCheckoutTotal
-                })
-              });
-              localStorage.setItem('last_paystack_payment', JSON.stringify({
-                reference: response.reference,
-                email: emailAddress,
-                amount: finalCheckoutTotal.toFixed(2),
-                name: cardName
-              }));
-              navigate('/thank-you');
-            } catch (err) {
-              localStorage.setItem('last_paystack_payment', JSON.stringify({
-                reference: response.reference,
-                email: emailAddress,
-                amount: finalCheckoutTotal.toFixed(2),
-                name: cardName
-              }));
-              navigate('/thank-you');
-            }
-          },
-          onClose: () => {
-            setIsSubmitting(false);
-          }
+          callback: function(response: any) { handleSuccess(response); },
+          onSuccess: function(response: any) { handleSuccess(response); },
+          onClose: function() { handleClose(); },
+          onCancel: function() { handleClose(); }
         });
         handler.openIframe();
       } catch (setupErrBefore: any) {

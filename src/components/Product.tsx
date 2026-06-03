@@ -30,8 +30,8 @@ export default function Product({ navigate }: ProductProps) {
                 <div className="absolute -inset-4 gradient-rainbow rounded-[2.5rem] opacity-30 blur-2xl" />
                 <div className="relative bg-card rounded-[2rem] overflow-hidden shadow-card border-4 border-primary/20 p-6">
                   <img 
-                    src="https://lh3.googleusercontent.com/d/1sGrdK-Ls7GzzvBIiGFblxxDtCMVaeH9E" 
-                    alt="Wedding couple custom colouring page" 
+                    src="https://lh3.googleusercontent.com/d/19tT02PH0vIJXsFxznx_1OnFOhv_lM0lV" 
+                    alt="Personalised custom colouring page preview" 
                     className="w-full h-auto rounded-3xl"
                     referrerPolicy="no-referrer"
                   />
