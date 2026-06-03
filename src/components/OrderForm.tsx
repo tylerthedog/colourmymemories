@@ -1,467 +1,325 @@
-import React, { useState, useRef } from 'react';
-import { ArrowLeft, Upload, Loader2, CheckCircle2, Image as ImageIcon, Trash2, CreditCard, Copy, Check, ExternalLink, Lock } from 'lucide-react';
-import StoryHelper from './StoryHelper';
+import React, { useState, useEffect } from 'react';
+import { ArrowLeft, CreditCard, Lock, ShieldCheck, AlertCircle, Loader2, ClipboardList, ExternalLink } from 'lucide-react';
 
 interface OrderFormProps {
   navigate: (to: string) => void;
 }
 
-interface FormState {
-  customer_name: string;
-  email: string;
-  phone: string;
-  story: string;
-  street: string;
-  city: string;
-  province: string;
-  postal_code: string;
-  country: string;
-}
-
 export default function OrderForm({ navigate }: OrderFormProps) {
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  // Global form targets
+  const baseEmbedUrl = "https://docs.google.com/forms/d/e/1FAIpQLSf9c_gsjPPnxFNN5SGK8i1cqI4P-kx29RF6jKGZ47ZVJrPn2A/viewform?embedded=true";
   
-  const [formData, setFormData] = useState<FormState>({
-    customer_name: '',
-    email: '',
-    phone: '',
-    story: '',
-    street: '',
-    city: '',
-    province: '',
-    postal_code: '',
-    country: 'South Africa'
-  });
+  // Try to find cached email, otherwise use the active session user's email
+  const getInitialEmail = () => {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const queryEmail = params.get('email');
+      if (queryEmail) return queryEmail;
+      
+      const cached = localStorage.getItem('last_paystack_payment');
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (parsed && parsed.email) return parsed.email;
+      }
+    } catch (_) {}
+    return 'tylerjohnhellyer@gmail.com';
+  };
 
-  const [submissionMode, setSubmissionMode] = useState<'interactive' | 'embed'>('interactive');
+  const getInitialEmbedUrl = (email: string) => {
+    if (email && email.includes('@')) {
+      return `${baseEmbedUrl}&emailAddress=${encodeURIComponent(email)}`;
+    }
+    return baseEmbedUrl;
+  };
 
-  const [photos, setPhotos] = useState<File[]>([]);
-  const [photoPreviews, setPhotoPreviews] = useState<string[]>([]);
-  const [storyFile, setStoryFile] = useState<File | null>(null);
+  const initialEmail = getInitialEmail();
+  const [emailAddress, setEmailAddress] = useState(initialEmail);
+  const [embedUrl, setEmbedUrl] = useState(getInitialEmbedUrl(initialEmail));
+  const [phoneNumber, setPhoneNumber] = useState('');
+  const [submittedFormChecked, setSubmittedFormChecked] = useState(false);
+
+  // Paystack credit card states
+  const [cardName, setCardName] = useState('');
+  const [cardNumber, setCardNumber] = useState('');
+  const [expiry, setExpiry] = useState('');
+  const [cvc, setCvc] = useState('');
+  const [packageType, setPackageType] = useState<'single' | 'duo' | 'family'>('single');
   
+  // Interface states
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isSubmitted, setIsSubmitted] = useState(false);
-  const [errors, setErrors] = useState<Record<string, string>>({});
-  const [backendError, setBackendError] = useState('');
+  const [errorMessage, setErrorMessage] = useState('');
+  const [cardBrand, setCardBrand] = useState<'visa' | 'mastercard' | 'amex' | 'generic'>('generic');
 
-  const [submittedOrderId, setSubmittedOrderId] = useState('');
-  const [copiedField, setCopiedField] = useState('');
+  // Promo / Discount Code States
+  const [promoInput, setPromoInput] = useState('');
+  const [appliedCode, setAppliedCode] = useState('');
+  const [promoSuccessMsg, setPromoSuccessMsg] = useState('');
+  const [promoError, setPromoError] = useState('');
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
-    if (errors[name]) {
-      setErrors((prev) => {
-        const copy = { ...prev };
-        delete copy[name];
-        return copy;
-      });
-    }
-  };
-
-  const handlePhotosChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files || []) as File[];
-    const validImages = files.filter((file) => {
-      const isImg = file.type.startsWith('image/');
-      const isUnderLimit = file.size <= 10 * 1024 * 1024; // 10MB
-      return isImg && isUnderLimit;
-    });
-
-    if (validImages.length < files.length) {
-      alert("Some files were skipped. Only images under 10MB are allowed.");
-    }
-
-    setPhotos((prev) => [...prev, ...validImages]);
-
-    validImages.forEach((img) => {
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        const result = event.target?.result as string;
-        if (result) {
-          setPhotoPreviews((prev) => [...prev, result]);
-        }
-      };
-      reader.readAsDataURL(img);
-    });
-
-    if (fileInputRef.current) fileInputRef.current.value = '';
-  };
-
-  const removePhoto = (idx: number) => {
-    setPhotos((prev) => prev.filter((_, i) => i !== idx));
-    setPhotoPreviews((prev) => prev.filter((_, i) => i !== idx));
-  };
-
-  const validateForm = () => {
-    const tempErrors: Record<string, string> = {};
-    if (!formData.customer_name.trim()) tempErrors.customer_name = "Name is required.";
-    if (!formData.email.trim()) {
-      tempErrors.email = "Email is required.";
-    } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
-      tempErrors.email = "Invalid email address.";
-    }
-    if (!formData.street.trim()) tempErrors.street = "Street address is required.";
-    if (!formData.city.trim()) tempErrors.city = "City is required.";
-    if (!formData.province.trim()) tempErrors.province = "Province is required.";
-    if (!formData.postal_code.trim()) tempErrors.postal_code = "Postal code is required.";
-    if (!formData.country.trim()) tempErrors.country = "Country is required.";
-    return tempErrors;
-  };
-
-  // Convert File to Base64 helper
-  const fileToBase64 = (file: File): Promise<string> => {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.readAsDataURL(file);
-      reader.onload = () => resolve(reader.result as string);
-      reader.onerror = (error) => reject(error);
-    });
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setErrors({});
-    setBackendError('');
-
-    const formValidationErrors = validateForm();
-    if (Object.keys(formValidationErrors).length > 0) {
-      setErrors(formValidationErrors);
-      window.scrollTo({ top: 300, behavior: 'smooth' });
+  const handleApplyPromo = () => {
+    setPromoError('');
+    setPromoSuccessMsg('');
+    const code = promoInput.trim().toUpperCase();
+    if (!code) {
+      setPromoError('Please enter a promo code.');
       return;
     }
+    if (code === 'WELCOME30') {
+      setAppliedCode('WELCOME30');
+      setPromoSuccessMsg('WELCOME30 code applied! 30% discount matches updated total.');
+    } else if (code === 'TESTING99') {
+      setAppliedCode('TESTING99');
+      setPromoSuccessMsg('TESTING99 live testing code applied! 99% discount enabled.');
+    } else {
+      setPromoError('Invalid promo code. Please specify a correct code.');
+    }
+  };
 
-    if (photos.length === 0) {
-      setBackendError("Please upload at least one photo for your colouring book.");
-      window.scrollTo({ top: 400, behavior: 'smooth' });
+  // Detect card issuer in real time
+  useEffect(() => {
+    const rawNumber = cardNumber.replace(/\D/g, '');
+    if (rawNumber.startsWith('4')) {
+      setCardBrand('visa');
+    } else if (/^(5[1-5]|2[2-7])/.test(rawNumber)) {
+      setCardBrand('mastercard');
+    } else if (/^(34|37)/.test(rawNumber)) {
+      setCardBrand('amex');
+    } else {
+      setCardBrand('generic');
+    }
+  }, [cardNumber]);
+
+  // Handle formatted card number output
+  const handleCardNumberChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    let value = e.target.value.replace(/\D/g, '');
+    if (value.length > 16) {
+      value = value.substring(0, 16);
+    }
+    const matches = value.match(/\d{1,4}/g);
+    const formatted = matches ? matches.join(' ') : '';
+    setCardNumber(formatted);
+  };
+
+  // Handle MM/YY string parsing
+  const handleExpiryChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    let value = e.target.value.replace(/\D/g, '');
+    if (value.length > 4) {
+      value = value.substring(0, 4);
+    }
+    if (value.length > 2) {
+      value = value.substring(0, 2) + '/' + value.substring(2);
+    }
+    setExpiry(value);
+  };
+
+  // Handle only digits in CVC
+  const handleCvcChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value.replace(/\D/g, '');
+    if (value.length <= 4) {
+      setCvc(value);
+    }
+  };
+
+  // Pricing schema - simplified to a single product of R 600
+  const getPackagePrice = () => {
+    return 600; // ZAR
+  };
+
+  const getPackageLabel = () => {
+    return 'ColourMyMemories Custom Storybook';
+  };
+
+  const getDiscountedPrice = () => {
+    const base = getPackagePrice();
+    if (appliedCode === 'WELCOME30') {
+      return base * 0.70; // 30% discount
+    }
+    if (appliedCode === 'TESTING99') {
+      return base * 0.01; // 99% discount
+    }
+    return base;
+  };
+
+  const handlePayNowSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setErrorMessage('');
+
+    // Field validates
+    if (!emailAddress || !emailAddress.includes('@')) {
+      setErrorMessage('Please enter a valid email address for your electronic receipt.');
+      return;
+    }
+    if (!phoneNumber.trim()) {
+      setErrorMessage('Please enter a valid Phone Number.');
+      return;
+    }
+    if (!submittedFormChecked) {
+      setErrorMessage('Please confirm that you have submitted your information on the Google Form by ticking the checkbox.');
+      return;
+    }
+    if (!cardName.trim()) {
+      setErrorMessage('Please enter the Cardholder Name as written on the card.');
+      return;
+    }
+    const cleanNum = cardNumber.replace(/\D/g, '');
+    if (cleanNum.length < 15) {
+      setErrorMessage('Please enter a valid credit card number.');
+      return;
+    }
+    if (expiry.length < 5) {
+      setErrorMessage('Please specify month and year of expiry (MM/YY).');
+      return;
+    }
+    if (cvc.length < 3) {
+      setErrorMessage('Please specify the CVC security code (printed on reverse).');
       return;
     }
 
     setIsSubmitting(true);
 
-    try {
-      // 1. Generate a unique dynamic order ID
-      const timestampPart = Date.now().toString().slice(-6);
-      const randPart = Math.floor(100 + Math.random() * 900);
-      const orderId = `CMM-${timestampPart}-${randPart}`;
+    // Retrieve Paystack public key dynamically from configuration environments or default sandbox
+    const metaEnv = (import.meta as any).env || {};
+    const processEnv = typeof process !== 'undefined' ? ((process as any).env || {}) : {};
+    const publicKey = 
+      (metaEnv.VITE_PAYSTACK_PUBLIC_KEY) || 
+      (metaEnv.PAYSTACK_PUBLIC_KEY) || 
+      (processEnv.PAYSTACK_PUBLIC_KEY) || 
+      'pk_test_df98f6a9e1442111161d9a0d1d2b8b99ec0ce3bf';
 
-      // 2. Format Story Details content: Bundling story, email, list of uploaded files as details
-      let storyDetailsContent = `=== STORY/BOOK DESCRIPTION ===\n${formData.story || 'No text story provided.'}\n\n`;
-      storyDetailsContent += `=== CLIENT INFORMATION ===\n`;
-      storyDetailsContent += `Email: ${formData.email}\n`;
-      storyDetailsContent += `Phone: ${formData.phone || 'None'}\n\n`;
-      
-      storyDetailsContent += `=== UPLOADED MEDIA ASSETS ===\n`;
-      if (storyFile) {
-        storyDetailsContent += `Narrative File: ${storyFile.name} (${(storyFile.size / 1024).toFixed(1)} KB)\n`;
-      } else {
-        storyDetailsContent += `Narrative File: None Provided\n`;
-      }
-      
-      if (photos.length > 0) {
-        storyDetailsContent += `Total Photos Attached: ${photos.length}\n`;
-        photos.forEach((file, index) => {
-          storyDetailsContent += ` - File #${index + 1}: ${file.name} (${(file.size / 1024).toFixed(1)} KB)\n`;
-        });
-      } else {
-        storyDetailsContent += `Photos Attached: None\n`;
-      }
-      storyDetailsContent += `\n[Reference ID: ${orderId}]`;
+    const finalCheckoutTotal = getDiscountedPrice();
+    // Base amount is hardcoded to exactly 60000 (R 600 * 100) as requested.
+    // If a discount code is active (e.g., WELCOME30 or TESTING99), we adjust it to the discounted amount times 100 to support safe testing of live/sandbox transactions!
+    const finalAmountInCents = appliedCode ? Math.round(finalCheckoutTotal * 100) : 60000;
 
-      // 3. Submit directly to Google Forms using a hidden iframe form submission.
-      // This is the absolute gold-standard, bulletproof method that completely bypasses
-      // browser CORS blocks, adblockers, and browser-specific fetch tracking preventions.
-      const iframe = document.createElement('iframe');
-      iframe.name = 'google_form_iframe';
-      iframe.id = 'google_form_iframe';
-      iframe.style.display = 'none';
-      document.body.appendChild(iframe);
-
-      const form = document.createElement('form');
-      form.method = 'POST';
-      form.action = 'https://docs.google.com/forms/d/e/1FAIpQLSf9c_gsjPPnxFNN5SGK8i1cqI4P-kx29RF6jKGZ47ZVJrPn2A/formResponse';
-      form.target = 'google_form_iframe';
-
-      const fields: Record<string, string> = {
-        'entry.1474310025': formData.customer_name,
-        'entry.1082449212': formData.phone || '',
-        'entry.577022071': formData.street,
-        'entry.1697465648': formData.city,
-        'entry.1493182288': formData.province,
-        'entry.1143424652': formData.postal_code,
-        'entry.1691663973': formData.country,
-        'entry.1137043253': storyDetailsContent,
-        'emailAddress': formData.email
-      };
-
-      Object.entries(fields).forEach(([name, value]) => {
-        const input = document.createElement('input');
-        input.type = 'hidden';
-        input.name = name;
-        input.value = value;
-        form.appendChild(input);
-      });
-
-      document.body.appendChild(form);
-      form.submit();
-
-      // Clean up DOM elements after a brief duration
-      setTimeout(() => {
-        try {
-          document.body.removeChild(form);
-          document.body.removeChild(iframe);
-        } catch (domErr) {
-          console.warn('DOM cleanup warning:', domErr);
-        }
-      }, 5000);
-
-      // 4. Also upload image files to the backend server (async, non-blocking fallback)
-      // This ensures that the uploaded images and stories are backed up to Cloudflare R2 / local disk
-      try {
-        const base64Photos = await Promise.all(
-          photos.map(async (file) => {
-            const base64Data = await fileToBase64(file);
-            return {
-              name: file.name,
-              type: file.type,
-              base64Data
-            };
-          })
-        );
-
-        let base64StoryFile = null;
-        if (storyFile) {
-          const base64Data = await fileToBase64(storyFile);
-          base64StoryFile = {
-            name: storyFile.name,
-            type: storyFile.type,
-            base64Data
-          };
-        }
-
-        // Auto-detect backend endpoint URL (handles local express dev as well as Netlify production)
-        const isNetlify = window.location.hostname.includes('netlify.app');
-        const apiEndpoint = isNetlify ? '/.netlify/functions/submit-order' : '/api/submit-order';
-
-        await fetch(apiEndpoint, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            details: {
-              customer_name: formData.customer_name,
-              email: formData.email,
-              phone: formData.phone,
-              street: formData.street,
-              city: formData.city,
-              province: formData.province,
-              postal_code: formData.postal_code,
-              country: formData.country,
-              story: formData.story
-            },
-            photos: base64Photos,
-            storyFile: base64StoryFile
-          })
-        });
-      } catch (backendApiErr) {
-        // Encase in catch block to avoid disrupting successful browser form submission
-        console.warn('Backend image repository backup warning:', backendApiErr);
-      }
-
-      // 5. Update state on successful completion to advance the user directly to the payment view
-      setSubmittedOrderId(orderId);
-      setIsSubmitted(true);
-      window.scrollTo({ top: 0 });
-    } catch (err) {
-      console.error('Order checkout submission error:', err);
-      setBackendError("Something went wrong during order processing. Please try again or reach out to us directly over WhatsApp.");
-    } finally {
+    const PaystackPop = (window as any).PaystackPop;
+    if (!PaystackPop) {
+      setErrorMessage('Secure payment service is temporarily unavailable. Check your network or retry.');
       setIsSubmitting(false);
+      return;
+    }
+
+    try {
+      const paystack = new PaystackPop();
+      paystack.newTransaction({
+        key: publicKey,
+        email: emailAddress,
+        amount: finalAmountInCents, // Pass secured locked major unit multiplied by 100
+        currency: 'ZAR',
+        metadata: {
+          custom_fields: [
+            {
+              display_name: "Cardholder Name",
+              variable_name: "cardholder_name",
+              value: cardName
+            },
+            {
+              display_name: "Custom Package",
+              variable_name: "custom_package",
+              value: getPackageLabel()
+            }
+          ]
+        },
+        onSuccess: async (transaction: any) => {
+          console.log('[Paystack Secure OK] Reference:', transaction.reference);
+          try {
+            // Save transaction onto existing order confirmation database record on server
+            await fetch('/api/confirm-payment', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                reference: transaction.reference,
+                email: emailAddress,
+                name: cardName,
+                amount: finalCheckoutTotal
+              })
+            });
+
+            // Cache payment metrics locally for client thank-you page presentation
+            localStorage.setItem('last_paystack_payment', JSON.stringify({
+              reference: transaction.reference,
+              email: emailAddress,
+              amount: finalCheckoutTotal.toFixed(2),
+              name: cardName
+            }));
+
+            // Direct route transition to thank you view
+            navigate('/thank-you');
+          } catch (apiErr) {
+            console.error('Failure saving transaction confirmation securely:', apiErr);
+            localStorage.setItem('last_paystack_payment', JSON.stringify({
+              reference: transaction.reference,
+              email: emailAddress,
+              amount: finalCheckoutTotal.toFixed(2),
+              name: cardName
+            }));
+            navigate('/thank-you');
+          } finally {
+            setIsSubmitting(false);
+          }
+        },
+        onCancel: () => {
+          setIsSubmitting(false);
+          setErrorMessage('Payment cancelled by user.');
+        }
+      });
+    } catch (ex) {
+      console.warn('Paystack constructor failed - using inline popup setup fallback:', ex);
+      try {
+        const handler = PaystackPop.setup({
+          key: publicKey,
+          email: emailAddress,
+          amount: finalAmountInCents,
+          currency: 'ZAR',
+          callback: async (response: any) => {
+            try {
+              await fetch('/api/confirm-payment', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  reference: response.reference,
+                  email: emailAddress,
+                  name: cardName,
+                  amount: finalCheckoutTotal
+                })
+              });
+              localStorage.setItem('last_paystack_payment', JSON.stringify({
+                reference: response.reference,
+                email: emailAddress,
+                amount: finalCheckoutTotal.toFixed(2),
+                name: cardName
+              }));
+              navigate('/thank-you');
+            } catch (err) {
+              localStorage.setItem('last_paystack_payment', JSON.stringify({
+                reference: response.reference,
+                email: emailAddress,
+                amount: finalCheckoutTotal.toFixed(2),
+                name: cardName
+              }));
+              navigate('/thank-you');
+            }
+          },
+          onClose: () => {
+            setIsSubmitting(false);
+          }
+        });
+        handler.openIframe();
+      } catch (setupErrBefore: any) {
+        setIsSubmitting(false);
+        setErrorMessage(`Unable to initialize transaction popup: ${setupErrBefore.message}`);
+      }
     }
   };
 
-  if (isSubmitted) {
-    const handleCopyText = (text: string, fieldName: string) => {
-      navigator.clipboard.writeText(text).then(() => {
-        setCopiedField(fieldName);
-        setTimeout(() => setCopiedField(''), 2000);
-      }).catch((err) => {
-        console.error('Failed to copy text:', err);
-      });
-    };
-
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-background via-muted/30 to-background flex items-center justify-center px-4 py-12 md:py-20">
-        <div className="max-w-2xl w-full bg-card rounded-3xl border border-border p-6 md:p-10 shadow-card animate-fade-in-up space-y-8">
-          {/* Header Status */}
-          <div className="text-center space-y-3">
-            <div className="w-16 h-16 bg-accent/15 text-accent flex items-center justify-center mx-auto rounded-full shadow-soft animate-scale-in">
-              <CheckCircle2 className="w-10 h-10" />
-            </div>
-            <h1 className="text-3xl font-extrabold tracking-tight">
-              Order Received! <span className="text-gradient-rainbow">Next Step Below</span>
-            </h1>
-            <p className="text-muted-foreground text-sm max-w-sm mx-auto">
-              Your custom colouring book draft has been registered. Please complete the EFT payment below so we can start generating your custom illustratons.
-            </p>
-          </div>
-
-          {/* Reference Banner */}
-          <div className="bg-muted/30 border border-border/80 rounded-2xl p-5 flex flex-col sm:flex-row justify-between items-center gap-4">
-            <div className="w-full sm:w-auto text-center sm:text-left">
-              <p className="text-xs uppercase tracking-wider text-muted-foreground font-bold">Your Order Reference ID</p>
-              <p className="text-lg font-mono font-bold text-foreground mt-0.5">{submittedOrderId || 'CMM-ORDER-PENDING'}</p>
-            </div>
-            <div className="w-full sm:w-auto flex justify-center">
-              <button
-                type="button"
-                onClick={() => handleCopyText(submittedOrderId || 'CMM-ORDER-PENDING', 'refid')}
-                className="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 px-4 h-10 rounded-xl text-xs font-bold border border-border bg-card hover:bg-muted text-foreground transition-all duration-200 cursor-pointer shadow-subtle active:scale-95 whitespace-nowrap"
-              >
-                {copiedField === 'refid' ? (
-                  <>
-                    <Check className="w-3.5 h-3.5 text-accent animate-scale-in" />
-                    <span className="text-accent font-bold">Copied Ref ID!</span>
-                  </>
-                ) : (
-                  <>
-                    <Copy className="w-3.5 h-3.5" />
-                    <span>Copy Reference ID</span>
-                  </>
-                )}
-              </button>
-            </div>
-          </div>
-
-          {/* EFT Bank details */}
-          <div className="space-y-4">
-            <div className="flex items-center gap-2">
-              <CreditCard className="w-5 h-5 text-primary" />
-              <h2 className="text-lg font-bold text-foreground">Direct Bank Transfer (EFT)</h2>
-            </div>
-
-            <div className="grid gap-3.5 sm:grid-cols-2">
-              {/* Account Name */}
-              <div className="bg-muted/10 border border-border/50 rounded-xl p-4 flex justify-between items-center group relative">
-                <div>
-                  <span className="text-xs text-muted-foreground/80 block font-semibold mb-0.5">Account Holder Name</span>
-                  <span className="text-sm font-bold text-foreground">ColourMyMemories</span>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => handleCopyText('ColourMyMemories', 'holder')}
-                  className="w-8 h-8 rounded-lg hover:bg-muted/65 flex items-center justify-center text-muted-foreground/60 hover:text-foreground transition-colors cursor-pointer"
-                  title="Copy Name"
-                >
-                  {copiedField === 'holder' ? <Check className="w-3.5 h-3.5 text-accent animate-scale-in" /> : <Copy className="w-3.5 h-3.5" />}
-                </button>
-              </div>
-
-              {/* Bank Name */}
-              <div className="bg-muted/10 border border-border/50 rounded-xl p-4 flex justify-between items-center group relative">
-                <div>
-                  <span className="text-xs text-muted-foreground/80 block font-semibold mb-0.5">Bank Name</span>
-                  <span className="text-sm font-bold text-foreground">First National Bank (FNB)</span>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => handleCopyText('First National Bank', 'bank')}
-                  className="w-8 h-8 rounded-lg hover:bg-muted/65 flex items-center justify-center text-muted-foreground/60 hover:text-foreground transition-colors cursor-pointer"
-                  title="Copy Bank"
-                >
-                  {copiedField === 'bank' ? <Check className="w-3.5 h-3.5 text-accent animate-scale-in" /> : <Copy className="w-3.5 h-3.5" />}
-                </button>
-              </div>
-
-              {/* Account Number */}
-              <div className="bg-muted/10 border border-border/50 rounded-xl p-4 flex justify-between items-center group relative font-semibold">
-                <div>
-                  <span className="text-xs text-muted-foreground/80 block font-semibold mb-0.5">Account Number</span>
-                  <span className="text-sm font-mono font-bold text-foreground">63098521043</span>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => handleCopyText('63098521043', 'acnum')}
-                  className="w-8 h-8 rounded-lg hover:bg-muted/65 flex items-center justify-center text-muted-foreground/60 hover:text-foreground transition-colors cursor-pointer"
-                  title="Copy Account Number"
-                >
-                  {copiedField === 'acnum' ? <Check className="w-3.5 h-3.5 text-accent animate-scale-in" /> : <Copy className="w-3.5 h-3.5" />}
-                </button>
-              </div>
-
-              {/* Branch Code */}
-              <div className="bg-muted/10 border border-border/50 rounded-xl p-4 flex justify-between items-center group relative font-semibold">
-                <div>
-                  <span className="text-xs text-muted-foreground/80 block font-semibold mb-0.5">Branch Code</span>
-                  <span className="text-sm font-mono font-bold text-foreground">250655</span>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => handleCopyText('250655', 'bcode')}
-                  className="w-8 h-8 rounded-lg hover:bg-muted/65 flex items-center justify-center text-muted-foreground/60 hover:text-foreground transition-colors cursor-pointer"
-                  title="Copy Branch Code"
-                >
-                  {copiedField === 'bcode' ? <Check className="w-3.5 h-3.5 text-accent animate-scale-in" /> : <Copy className="w-3.5 h-3.5" />}
-                </button>
-              </div>
-            </div>
-
-            {/* Reference Warning */}
-            <div className="bg-amber-500/10 border border-amber-500/20 text-amber-600 rounded-2xl p-4 md:p-5 text-sm leading-relaxed font-sans flex gap-3 shadow-sm">
-              <Lock className="w-5 h-5 shrink-0 text-amber-500 mt-0.5" />
-              <div>
-                <strong>Deposit Reference Requirement:</strong> Please use your reference code <span className="font-mono bg-amber-500/10 px-1 py-0.5 rounded font-bold">{submittedOrderId || 'CMM-XXXXXX'}</span>. E-mail your proof of transfer to <strong className="font-semibold text-amber-700">tylerjohnhellyer@gmail.com</strong> or WhatsApp it below to fast-track your book's curation.
-              </div>
-            </div>
-          </div>
-
-          {/* Pricing Info Note */}
-          <div className="border-t border-border/70 pt-6 space-y-4">
-            <h3 className="text-sm font-bold text-foreground">What happens next?</h3>
-            <ol className="text-xs text-muted-foreground space-y-2 list-decimal list-inside pl-1 leading-relaxed">
-              <li>Once payment triggers, our artists begin turning your memories into custom black &amp; white colouring sheets.</li>
-              <li>Within 5–7 days, we'll email or WhatsApp you a digital proofing preview.</li>
-              <li>You can request revisions to the drawings and texts until you are 100% satisfied.</li>
-              <li>Only after your explicit sign-off do we proceed to print, bind, and ship your A5 book nationwide.</li>
-            </ol>
-          </div>
-
-          {/* Action buttons */}
-          <div className="flex flex-col sm:flex-row gap-3 pt-2">
-            <button
-              onClick={() => {
-                navigate('/');
-                window.scrollTo({ top: 0 });
-              }}
-              className="flex-1 inline-flex items-center justify-center h-12 rounded-xl text-xs font-bold border border-border bg-card hover:bg-muted text-foreground transition-all duration-200 cursor-pointer shadow-subtle active:scale-97"
-            >
-              <ArrowLeft className="w-3.5 h-3.5 mr-2" />
-              Return to Homepage
-            </button>
-            <a
-              href={`https://wa.me/27608291485?text=Hi%20ColourMyMemories%2C%20I've%20just%20submitted%20an%20order!%20My%20Reference%20is%20${encodeURIComponent(submittedOrderId || 'CMM-ORDER')}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex-1 inline-flex items-center justify-center h-12 rounded-xl text-xs font-bold bg-[#25D366] hover:bg-[#20ba5a] text-white transition-all duration-200 cursor-pointer shadow-soft active:scale-97"
-            >
-              <ExternalLink className="w-3.5 h-3.5 mr-2" />
-              WhatsApp Proof of Payment
-            </a>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-muted/30 to-background">
-      {/* Dynamic navbar header */}
+    <div className="min-h-screen bg-gradient-to-br from-background via-muted/30 to-background flex flex-col">
+      {/* Navbar Header */}
       <header className="border-b border-border/50 bg-background/80 backdrop-blur-lg sticky top-0 z-50">
         <div className="container mx-auto px-4 h-16 flex items-center justify-between">
           <a href="/" onClick={(e) => { e.preventDefault(); navigate('/'); }} className="flex items-center gap-2">
             <div className="w-8 h-8 rounded-lg overflow-hidden border border-border/15">
               <img 
-                src="/assets/logo-DcBoA8lE.png" 
+                src="https://lh3.googleusercontent.com/d/1UUdIwzt7nRbETaMek7dKYm7fE4eNLV1E" 
                 alt="ColourMyMemories" 
                 className="w-full h-full object-cover"
                 referrerPolicy="no-referrer"
@@ -477,333 +335,372 @@ export default function OrderForm({ navigate }: OrderFormProps) {
             className="flex items-center text-sm font-semibold border border-border bg-card px-4 py-2 rounded-xl text-muted-foreground hover:text-foreground hover:bg-muted transition-all duration-200 cursor-pointer"
           >
             <ArrowLeft className="w-4 h-4 mr-1.5" />
-            Back
+            Back to Home
           </button>
         </div>
       </header>
 
-      {/* Main Order Content */}
-      <div className="container mx-auto px-4 py-12 max-w-2xl">
+      {/* Main Content container */}
+      <div className="container mx-auto px-4 py-12 max-w-5xl flex-grow space-y-8">
         <div className="text-center mb-10 animate-fade-in-up space-y-3">
           <h1 className="text-3xl md:text-4xl font-extrabold tracking-tight">
             Order Your <span className="text-gradient-rainbow">Colouring Book</span>
           </h1>
-          <p className="text-muted-foreground text-lg">
-            Fill in your details, share your story, and upload your memories.
+          <p className="text-muted-foreground text-md max-w-xl mx-auto">
+            Complete the official order form and submit your memories, then secure your purchase via the card checkout gateway below.
           </p>
         </div>
 
-        {/* Submission Mode Selector */}
-        <div className="flex justify-center mb-10 animate-fade-in-up">
-          <div className="bg-card p-1 text-center rounded-2xl border border-border flex gap-1 inline-flex shadow-sm">
-            <button
-              type="button"
-              onClick={() => setSubmissionMode('interactive')}
-              className={`px-5 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all duration-300 cursor-pointer ${
-                submissionMode === 'interactive'
-                  ? 'bg-primary text-primary-foreground shadow-soft scale-[1.02]'
-                  : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
-              }`}
-            >
-              Interactive Story Wizard
-            </button>
-            <button
-              type="button"
-              onClick={() => setSubmissionMode('embed')}
-              className={`px-5 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all duration-300 cursor-pointer ${
-                submissionMode === 'embed'
-                  ? 'bg-primary text-primary-foreground shadow-soft scale-[1.02]'
-                  : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
-              }`}
-            >
-              Direct Google Form (Embedded)
-            </button>
+        {/* Step 1: Official Order Form - Full Width Container */}
+        <div className="w-full space-y-6 animate-fade-in-up">
+          <div className="bg-card rounded-2xl border border-border p-6 shadow-soft space-y-4">
+            <div className="flex flex-col gap-2">
+              <span className="px-3 py-1 bg-primary/10 text-primary w-fit rounded-full text-xs font-bold leading-none">
+                Step 1
+              </span>
+              <h2 className="text-xl font-bold text-foreground">Official Order Form</h2>
+            </div>
+            
+            <p className="text-xs text-muted-foreground leading-relaxed">
+              Provide your contact information, delivery details, sweet custom story preferences, and attach files directly inside the official Google Form.
+            </p>
+
+            <div className="p-3 bg-primary/5 border border-primary/20 rounded-xl text-[11px] text-primary font-semibold leading-relaxed flex items-center gap-2">
+              <span>💡</span>
+              <span>
+                <strong>How it works:</strong> Click the button below to open and fill out your order details securely. Please make sure to return to this page to complete your payment after submitting the form.
+              </span>
+            </div>
+
+            {/* Direct Button instead of iframe to completely remove whitespace and any collapsed views */}
+            <div className="pt-2 flex flex-col sm:flex-row items-center gap-4">
+              <a 
+                href={(() => {
+                  const cleanBase = "https://docs.google.com/forms/d/e/1FAIpQLSf9c_gsjPPnxFNN5SGK8i1cqI4P-kx29RF6jKGZ47ZVJrPn2A/viewform";
+                  if (emailAddress && emailAddress.includes('@')) {
+                    return `${cleanBase}?emailAddress=${encodeURIComponent(emailAddress)}`;
+                  }
+                  return cleanBase;
+                })()}
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="w-full sm:w-auto inline-flex items-center justify-center gap-2.5 bg-primary hover:bg-primary/95 text-primary-foreground font-bold px-8 py-4 rounded-xl shadow-md transition-all duration-200 cursor-pointer text-center whitespace-nowrap transform hover:-translate-y-0.5 active:translate-y-0"
+              >
+                <ClipboardList className="w-5 h-5" />
+                Fill Out Order Form
+                <ExternalLink className="w-4 h-4 opacity-75" />
+              </a>
+              <p className="text-xs text-muted-foreground leading-relaxed text-center sm:text-left max-w-md">
+                Opens the secure form in a new tab. Once completed, proceed to fill out your card details below under Step 2.
+              </p>
+            </div>
           </div>
         </div>
 
-        {backendError && (
-          <div className="mb-6 p-4 bg-destructive/10 border-2 border-destructive/20 text-destructive text-sm rounded-2xl flex items-center gap-2 animate-scale-in">
-            <CheckCircle2 className="w-5 h-5 shrink-0 rotate-45" />
-            <span>{backendError}</span>
-          </div>
-        )}
-
-        {submissionMode === 'embed' ? (
-          <div className="space-y-6 animate-fade-in-up">
-            <div className="bg-card rounded-2xl border border-border p-6 shadow-soft space-y-4">
-              <h2 className="text-xl font-bold text-foreground">Direct Google Form Submission</h2>
-              <p className="text-sm text-muted-foreground">
-                Prefer to provide your order information directly in the official Google Form? You can fill it out below. Once done, proceed to the EFT payment instructions on this page.
-              </p>
-              
-              <div className="rounded-2xl overflow-hidden border border-border/80 bg-white">
-                <iframe 
-                  src="https://docs.google.com/forms/d/e/1FAIpQLSf9c_gsjPPnxFNN5SGK8i1cqI4P-kx29RF6jKGZ47ZVJrPn2A/viewform?embedded=true" 
-                  width="100%" 
-                  height="850" 
-                  className="w-full h-[850px] border-0"
-                  title="Direct Google Form"
-                >
-                  Loading…
-                </iframe>
-              </div>
-            </div>
-
-            {/* Direct Bank details / Next steps shown helper for direct form submitters */}
-            <div className="bg-card rounded-2xl border border-border p-6 shadow-soft space-y-5">
-              <h2 className="text-lg font-bold text-foreground">Payment Instructions (EFT)</h2>
-              <p className="text-sm text-muted-foreground">
-                After submitting the Google Form above, please use the following EFT details to finalize your custom book order. 
-              </p>
-              
-              <div className="grid gap-3.5 sm:grid-cols-2 font-semibold font-mono">
-                <div className="bg-muted/10 border border-border/50 rounded-xl p-4 font-sans">
-                  <span className="text-xs text-muted-foreground/80 block font-semibold mb-0.5">Account Holder Name</span>
-                  <span className="text-sm font-bold text-foreground font-sans">ColourMyMemories</span>
-                </div>
-                <div className="bg-muted/10 border border-border/50 rounded-xl p-4 font-sans">
-                  <span className="text-xs text-muted-foreground/80 block font-semibold mb-0.5">Bank Name</span>
-                  <span className="text-sm font-bold text-foreground font-sans">First National Bank (FNB)</span>
-                </div>
-                <div className="bg-muted/10 border border-border/50 rounded-xl p-4">
-                  <span className="text-xs text-muted-foreground/80 block font-sans font-semibold mb-0.5">Account Number</span>
-                  <span className="text-sm font-bold text-foreground">63098521043</span>
-                </div>
-                <div className="bg-muted/10 border border-border/50 rounded-xl p-4">
-                  <span className="text-xs text-muted-foreground/80 block font-sans font-semibold mb-0.5">Branch Code</span>
-                  <span className="text-sm font-bold text-foreground">250655</span>
+        {/* Step 2: Secure Card Payment - Stacked Below Step 1 */}
+        <div className="w-full max-w-3xl mx-auto space-y-6 animate-fade-in-up">
+          
+          {/* Payment card container */}
+          <form onSubmit={handlePayNowSubmit} className="bg-card rounded-2xl border border-border p-6 shadow-soft space-y-5">
+              <div className="flex flex-col gap-2">
+                <span className="px-3 py-1 bg-emerald-500/10 text-emerald-600 w-fit rounded-full text-xs font-bold leading-none">
+                  Step 2
+                </span>
+                <div className="flex items-center gap-2">
+                  <CreditCard className="w-5 h-5 text-primary" />
+                  <h2 className="text-lg font-bold text-foreground">Secure Card Payment</h2>
                 </div>
               </div>
-              
-              <div className="bg-amber-500/10 border border-amber-500/20 text-amber-600 rounded-2xl p-4 text-sm leading-relaxed flex gap-3 shadow-sm">
-                <Lock className="w-5 h-5 shrink-0 text-amber-500 mt-0.5" />
-                <div>
-                  <strong>Proof of payment:</strong> Please email your payment confirmation to <strong className="font-semibold text-amber-700">tylerjohnhellyer@gmail.com</strong> or WhatsApp it to <strong className="font-semibold text-amber-700">+27 60 829 1485</strong> with your Full Name as reference so we can link your payment to your Google Form response.
-                </div>
-              </div>
-            </div>
-          </div>
-        ) : (
-          <form onSubmit={handleSubmit} className="space-y-8 animate-fade-in-up">
-          {/* Card 1: Your Details */}
-          <div className="bg-card rounded-2xl border border-border p-6 shadow-soft space-y-5">
-            <div className="space-y-1">
-              <h2 className="text-xl font-bold text-foreground">Your Details</h2>
-              <p className="text-sm text-muted-foreground">
-                These details will be used to stay in contact with you during the custom crafting process.
-              </p>
-            </div>
 
-            <div className="grid sm:grid-cols-2 gap-4">
-              {/* Full Name */}
+              <p className="text-xs text-muted-foreground leading-relaxed border-b border-border/40 pb-3">
+                Securely clear your order payment using your Visa, MasterCard, or AmEx card via the protected Paystack gateway.
+              </p>
+
+              {/* Error indicator status */}
+              {errorMessage && (
+                <div className="p-3.5 bg-destructive/10 border border-destructive/20 text-destructive text-xs rounded-xl flex items-start gap-2 animate-scale-in">
+                  <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+                  <span className="font-semibold leading-normal">{errorMessage}</span>
+                </div>
+              )}
+
+              {/* Single Product Details (Unclickable) */}
               <div className="space-y-1.5">
-                <label htmlFor="customer_name" className="text-sm font-bold text-muted-foreground">Full Name *</label>
-                <input
-                  id="customer_name"
-                  type="text"
-                  name="customer_name"
-                  value={formData.customer_name}
-                  onChange={handleInputChange}
-                  placeholder="Jane Doe"
-                  className="w-full h-11 px-4 rounded-xl border border-input focus:border-primary/50 focus:ring-2 focus:ring-primary/15 bg-background text-foreground transition-all focus:outline-none placeholder:text-muted-foreground/50 text-sm font-sans"
-                />
-                {errors.customer_name && <p className="text-xs text-destructive mt-1 font-semibold">{errors.customer_name}</p>}
+                <label className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider block">
+                  Product Description
+                </label>
+                <div className="p-4 rounded-xl border border-border/80 bg-muted/10 flex justify-between items-center shadow-inner">
+                  <div>
+                    <span className="text-xs font-extrabold text-foreground block">ColourMyMemories Custom Storybook</span>
+                    <span className="text-[10px] text-muted-foreground block leading-relaxed mt-0.5">
+                      Hand-drawn vector coloring outlines of your memories.
+                    </span>
+                  </div>
+                  <div className="text-right shrink-0 ml-3">
+                    <span className="font-extrabold text-sm text-foreground font-mono block">R 600.00</span>
+                    <span className="text-[9px] text-emerald-600 font-extrabold block uppercase tracking-wider">ZAR</span>
+                  </div>
+                </div>
               </div>
 
-              {/* Email Address */}
-              <div className="space-y-1.5">
-                <label htmlFor="email" className="text-sm font-bold text-muted-foreground">Email Address *</label>
-                <input
-                  id="email"
-                  type="email"
-                  name="email"
-                  value={formData.email}
-                  onChange={handleInputChange}
-                  placeholder="jane@example.com"
-                  className="w-full h-11 px-4 rounded-xl border border-input focus:border-primary/50 focus:ring-2 focus:ring-primary/15 bg-background text-foreground transition-all focus:outline-none placeholder:text-muted-foreground/50 text-sm font-sans"
-                />
-                {errors.email && <p className="text-xs text-destructive mt-1 font-semibold">{errors.email}</p>}
-              </div>
-            </div>
+              {/* Secure Credit Card Fields */}
+              <div className="space-y-3.5 pt-2">
+                {/* Email and Phone Number Fields */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* Email */}
+                  <div className="space-y-1">
+                    <div className="flex justify-between items-center">
+                      <label htmlFor="email" className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider block">
+                        Email
+                      </label>
+                      <span className="text-[9px] text-primary font-bold">
+                        💡 Syncs Step 1
+                      </span>
+                    </div>
+                    <input
+                      id="email"
+                      type="email"
+                      required
+                      placeholder="you@example.com"
+                      value={emailAddress}
+                      onChange={(e) => setEmailAddress(e.target.value)}
+                      onBlur={() => {
+                        if (emailAddress && emailAddress.includes('@')) {
+                          setEmbedUrl(`${baseEmbedUrl}&emailAddress=${encodeURIComponent(emailAddress)}`);
+                        }
+                      }}
+                      className="w-full h-11 bg-muted/10 text-sm font-semibold rounded-xl border border-border/80 px-4 focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary placeholder:text-muted-foreground/50"
+                    />
+                  </div>
 
-            {/* Phone Number */}
-            <div className="space-y-1.5">
-              <label htmlFor="phone" className="text-sm font-bold text-muted-foreground">Phone Number</label>
-              <input
-                id="phone"
-                type="text"
-                name="phone"
-                value={formData.phone}
-                onChange={handleInputChange}
-                placeholder="+27 60 829 1485"
-                className="w-full h-11 px-4 rounded-xl border border-input focus:border-primary/50 focus:ring-2 focus:ring-primary/15 bg-background text-foreground transition-all focus:outline-none placeholder:text-muted-foreground/50 text-sm font-sans"
-              />
-            </div>
-          </div>
+                  {/* Phone Number */}
+                  <div className="space-y-1">
+                    <label htmlFor="phone" className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider block">
+                      Phone Number
+                    </label>
+                    <input
+                      id="phone"
+                      type="tel"
+                      required
+                      placeholder="e.g. +27 82 123 4567"
+                      value={phoneNumber}
+                      onChange={(e) => setPhoneNumber(e.target.value)}
+                      className="w-full h-11 bg-muted/10 text-sm font-semibold rounded-xl border border-border/80 px-4 focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary placeholder:text-muted-foreground/50"
+                    />
+                  </div>
+                </div>
 
-          {/* Card 2: Custom Story (StoryHelper) */}
-          <StoryHelper
-            story={formData.story}
-            onStoryChange={(text: string) => setFormData((prev) => ({ ...prev, story: text }))}
-            storyFile={storyFile}
-            onStoryFileChange={setStoryFile}
-          />
+                {/* Cardholder Name */}
+                <div className="space-y-1">
+                  <label htmlFor="cardname" className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider block">
+                    Cardholder Name
+                  </label>
+                  <input
+                    id="cardname"
+                    type="text"
+                    required
+                    placeholder="John Doe"
+                    value={cardName}
+                    onChange={(e) => setCardName(e.target.value)}
+                    className="w-full h-11 bg-muted/10 text-sm font-semibold rounded-xl border border-border/80 px-4 focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary placeholder:text-muted-foreground/50"
+                  />
+                </div>
 
-          {/* Card 3: Upload Photos */}
-          <div className="bg-card rounded-2xl border border-border p-6 shadow-soft space-y-5">
-            <div className="space-y-1">
-              <h2 className="text-xl font-bold text-foreground">Upload Photos *</h2>
-              <p className="text-sm text-muted-foreground">
-                Upload the memorable photos you'd like us to convert into black & white colouring lines. Max 10MB per image.
-              </p>
-            </div>
-
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/*"
-              multiple
-              onChange={handlePhotosChange}
-              className="hidden"
-            />
-
-            <button
-              type="button"
-              onClick={() => fileInputRef.current?.click()}
-              className="w-full min-h-[140px] flex flex-col items-center justify-center border-dashed border-2 border-border/85 hover:border-primary/50 rounded-2xl bg-muted/15 text-muted-foreground hover:text-foreground transition-all duration-300 cursor-pointer"
-            >
-              <Upload className="w-8 h-8 mb-2 text-muted-foreground/60" />
-              <span className="text-sm font-semibold">Choose & Upload Memory Images</span>
-              <span className="text-xs text-muted-foreground/60 mt-1">Accepts multiple images. Max 10MB each.</span>
-            </button>
-
-            {photoPreviews.length > 0 && (
-              <div className="grid grid-cols-3 sm:grid-cols-4 gap-4 mt-6 animate-fade-in-up">
-                {photoPreviews.map((src, k) => (
-                  <div key={k} className="relative group aspect-square rounded-2xl overflow-hidden border border-border shadow-sm">
-                    <img src={src} alt={`Preview ${k + 1}`} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
-                    <button
-                      type="button"
-                      onClick={() => removePhoto(k)}
-                      className="absolute top-1.5 right-1.5 w-7 h-7 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-200 cursor-pointer shadow-soft hover:scale-110"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                    <div className="absolute bottom-1 right-1 bg-black/60 px-1.5 py-0.5 rounded text-[9px] font-mono text-white font-bold select-none">
-                      Photo {k + 1}
+                {/* Card Number */}
+                <div className="space-y-1">
+                  <label htmlFor="cardnum" className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider block flex justify-between">
+                    <span>Card Number</span>
+                    {cardBrand !== 'generic' && (
+                      <span className="text-[10px] text-primary font-bold uppercase tracking-wider">
+                        {cardBrand} Detected
+                      </span>
+                    )}
+                  </label>
+                  <div className="relative">
+                    <input
+                      id="cardnum"
+                      type="text"
+                      required
+                      placeholder="0000 0000 0000 0000"
+                      value={cardNumber}
+                      onChange={handleCardNumberChange}
+                      className="w-full h-11 bg-muted/10 text-sm font-mono font-bold rounded-xl border border-border/80 pl-4 pr-10 focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary placeholder:text-muted-foreground/30"
+                    />
+                    <div className="absolute right-3.5 top-3 text-muted-foreground/45">
+                      <Lock className="w-4 h-4" />
                     </div>
                   </div>
-                ))}
-              </div>
-            )}
-          </div>
+                </div>
 
-          {/* Card 4: Shipping Address */}
-          <div className="bg-card rounded-2xl border border-border p-6 shadow-soft space-y-5">
-            <div className="space-y-1">
-              <h2 className="text-xl font-bold text-foreground">Shipping Address</h2>
-              <p className="text-sm text-muted-foreground">
-                Provide your South African nationwide address where we should deliver the package.
+                {/* Secure Row Expiry and CVC */}
+                <div className="grid grid-cols-2 gap-4">
+                  {/* Expiry */}
+                  <div className="space-y-1">
+                    <label htmlFor="cardexpiry" className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider block">
+                      Expiry Date
+                    </label>
+                    <input
+                      id="cardexpiry"
+                      type="text"
+                      required
+                      placeholder="MM/YY"
+                      value={expiry}
+                      onChange={handleExpiryChange}
+                      className="w-full h-11 bg-muted/10 text-sm font-semibold text-center rounded-xl border border-border/80 focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary placeholder:text-muted-foreground/50"
+                    />
+                  </div>
+
+                  {/* CVC */}
+                  <div className="space-y-1">
+                    <label htmlFor="cardcvc" className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider block">
+                      CVC Code
+                    </label>
+                    <input
+                      id="cardcvc"
+                      type="password"
+                      required
+                      placeholder="123"
+                      maxLength={4}
+                      value={cvc}
+                      onChange={handleCvcChange}
+                      className="w-full h-11 bg-muted/10 text-sm font-bold text-center tracking-widest rounded-xl border border-border/80 focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary placeholder:text-muted-foreground/50 placeholder:tracking-normal"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Promo / Discount Code Input Box */}
+              <div className="space-y-1.5 pt-2">
+                <label htmlFor="promocode" className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider block">
+                  Promo / Discount Code
+                </label>
+                <div className="flex gap-2">
+                  <input
+                    id="promocode"
+                    type="text"
+                    disabled={appliedCode !== ''}
+                    placeholder="PROMO CODE"
+                    value={promoInput}
+                    onChange={(e) => {
+                      setPromoInput(e.target.value);
+                      if (promoError) setPromoError('');
+                    }}
+                    className="flex-grow h-11 bg-muted/10 text-sm font-bold uppercase tracking-widest rounded-xl border border-border/80 px-4 focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary placeholder:text-muted-foreground/30 placeholder:normal-case disabled:opacity-60"
+                  />
+                  {appliedCode ? (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setAppliedCode('');
+                        setPromoInput('');
+                        setPromoSuccessMsg('');
+                      }}
+                      className="px-4 h-11 bg-destructive/10 hover:bg-destructive/15 text-destructive rounded-xl text-xs font-bold transition-all cursor-pointer border border-destructive/20"
+                    >
+                      Clear
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={handleApplyPromo}
+                      className="px-5 h-11 bg-primary text-primary-foreground hover:bg-primary/95 rounded-xl text-xs font-bold transition-all cursor-pointer shadow-soft"
+                    >
+                      Apply
+                    </button>
+                  )}
+                </div>
+                {promoSuccessMsg && (
+                  <span className="text-[11px] text-emerald-600 font-bold block animate-scale-in">
+                    ✓ {promoSuccessMsg}
+                  </span>
+                )}
+                {promoError && (
+                  <span className="text-[11px] text-destructive font-semibold block animate-scale-in">
+                    ✗ {promoError}
+                  </span>
+                )}
+              </div>
+
+              {/* Billing Summary Box */}
+              <div className="bg-muted/15 border border-border/40 rounded-xl p-4 space-y-2 mt-4">
+                <span className="text-[10px] font-bold text-muted-foreground uppercase block tracking-wider">
+                  Billing Summary ZAR
+                </span>
+                <div className="flex justify-between items-center text-xs md:text-sm font-semibold">
+                  <span className="text-muted-foreground truncate max-w-[200px]">
+                    {getPackageLabel()}
+                  </span>
+                  <span className="text-foreground font-mono font-bold">R {getPackagePrice().toFixed(2)}</span>
+                </div>
+                
+                {/* Applied details */}
+                {appliedCode && (
+                  <div className="flex justify-between items-center text-xs md:text-sm font-semibold border-t border-border/30 pt-2 mt-1">
+                    <span className="text-emerald-600 font-bold flex items-center gap-1">
+                      Discount Approved ({appliedCode})
+                    </span>
+                    <span className="text-emerald-600 font-mono font-bold">
+                      -R {(getPackagePrice() - getDiscountedPrice()).toFixed(2)}
+                    </span>
+                  </div>
+                )}
+
+                <div className="flex justify-between items-center text-xs md:text-sm font-semibold border-t border-border/30 pt-2 mt-1">
+                  <span className="text-muted-foreground">Nationwide Delivery</span>
+                  <span className="text-emerald-500 font-extrabold uppercase text-[10px]">Free / Included</span>
+                </div>
+                
+                <div className="flex justify-between items-center text-sm border-t border-border/30 pt-2.5 mt-1 font-bold">
+                  <span className="text-foreground">Total Checkout Cost</span>
+                  <span className="text-gradient-rainbow font-black font-sans text-base">R {getDiscountedPrice().toFixed(2)}</span>
+                </div>
+              </div>
+
+              {/* Required Google Form Confirmation Checkbox */}
+              <div className="pt-2 px-1">
+                <div className="flex items-start gap-3 bg-primary/5 p-3.5 rounded-xl border border-primary/10 hover:border-primary/20 transition-colors duration-200 cursor-pointer">
+                  <div className="flex items-center h-5 mt-0.5">
+                    <input
+                      id="submittedFormChecked"
+                      type="checkbox"
+                      required
+                      checked={submittedFormChecked}
+                      onChange={(e) => setSubmittedFormChecked(e.target.checked)}
+                      className="w-4.5 h-4.5 rounded border-border text-primary focus:ring-primary focus:ring-1 cursor-pointer"
+                    />
+                  </div>
+                  <label htmlFor="submittedFormChecked" className="text-xs text-foreground/85 font-semibold leading-relaxed cursor-pointer select-none">
+                    I have submitted my information on the Google Form
+                    <span className="text-destructive ml-1 font-bold">*</span>
+                  </label>
+                </div>
+              </div>
+
+              {/* Secure Checkout action button */}
+              <button
+                type="submit"
+                disabled={isSubmitting}
+                className="w-full inline-flex items-center justify-center h-12 rounded-xl text-sm font-extrabold bg-primary text-primary-foreground hover:bg-primary/95 transition-all duration-300 transform hover:scale-[1.01] active:scale-[0.99] cursor-pointer shadow-soft disabled:opacity-50 disabled:pointer-events-none mt-2"
+              >
+                {isSubmitting ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Completing Paystack Portal…
+                  </>
+                ) : (
+                  <>
+                    <ShieldCheck className="w-4 h-4 mr-2" />
+                    Pay Now (R {getDiscountedPrice().toFixed(2)})
+                  </>
+                )}
+              </button>
+
+              <p className="text-[10px] text-muted-foreground leading-snug text-center max-w-xs mx-auto">
+                Payments are secured via PCI-DSS compliant 3D Secure verification directly through Paystack. Your card credentials are never stored.
               </p>
-            </div>
-
-            <div className="space-y-4">
-              {/* Street Address */}
-              <div className="space-y-1.5">
-                <label htmlFor="street" className="text-sm font-bold text-muted-foreground">Street Address *</label>
-                <input
-                  id="street"
-                  type="text"
-                  name="street"
-                  value={formData.street}
-                  onChange={handleInputChange}
-                  placeholder="123 Keerom Street"
-                  className="w-full h-11 px-4 rounded-xl border border-input focus:border-primary/50 focus:ring-2 focus:ring-primary/15 bg-background text-foreground focus:outline-none placeholder:text-muted-foreground/50 text-sm font-sans transition-all"
-                />
-                {errors.street && <p className="text-xs text-destructive mt-1 font-semibold">{errors.street}</p>}
-              </div>
-
-              {/* City and Province */}
-              <div className="grid sm:grid-cols-2 gap-4">
-                <div className="space-y-1.5">
-                  <label htmlFor="city" className="text-sm font-bold text-muted-foreground">City *</label>
-                  <input
-                    id="city"
-                    type="text"
-                    name="city"
-                    value={formData.city}
-                    onChange={handleInputChange}
-                    placeholder="Cape Town"
-                    className="w-full h-11 px-4 rounded-xl border border-input focus:border-primary/50 focus:ring-2 focus:ring-primary/15 bg-background text-foreground focus:outline-none placeholder:text-muted-foreground/50 text-sm font-sans transition-all"
-                  />
-                  {errors.city && <p className="text-xs text-destructive mt-1 font-semibold">{errors.city}</p>}
-                </div>
-
-                <div className="space-y-1.5">
-                  <label htmlFor="province" className="text-sm font-bold text-muted-foreground">Province *</label>
-                  <input
-                    id="province"
-                    type="text"
-                    name="province"
-                    value={formData.province}
-                    onChange={handleInputChange}
-                    placeholder="Western Cape"
-                    className="w-full h-11 px-4 rounded-xl border border-input focus:border-primary/50 focus:ring-2 focus:ring-primary/15 bg-background text-foreground focus:outline-none placeholder:text-muted-foreground/50 text-sm font-sans transition-all"
-                  />
-                  {errors.province && <p className="text-xs text-destructive mt-1 font-semibold">{errors.province}</p>}
-                </div>
-              </div>
-
-              {/* Postal Code and Country */}
-              <div className="grid sm:grid-cols-2 gap-4">
-                <div className="space-y-1.5">
-                  <label htmlFor="postal_code" className="text-sm font-bold text-muted-foreground">Postal Code *</label>
-                  <input
-                    id="postal_code"
-                    type="text"
-                    name="postal_code"
-                    value={formData.postal_code}
-                    onChange={handleInputChange}
-                    placeholder="8001"
-                    className="w-full h-11 px-4 rounded-xl border border-input focus:border-primary/50 focus:ring-2 focus:ring-primary/15 bg-background text-foreground focus:outline-none placeholder:text-muted-foreground/50 text-sm font-sans transition-all"
-                  />
-                  {errors.postal_code && <p className="text-xs text-destructive mt-1 font-semibold">{errors.postal_code}</p>}
-                </div>
-
-                <div className="space-y-1.5">
-                  <label htmlFor="country" className="text-sm font-bold text-muted-foreground">Country *</label>
-                  <input
-                    id="country"
-                    type="text"
-                    name="country"
-                    value={formData.country}
-                    onChange={handleInputChange}
-                    className="w-full h-11 px-4 rounded-xl border border-input focus:border-primary/50 focus:ring-2 focus:ring-primary/15 bg-background text-foreground focus:outline-none text-sm font-sans transition-all"
-                  />
-                  {errors.country && <p className="text-xs text-destructive mt-1 font-semibold">{errors.country}</p>}
-                </div>
-              </div>
-            </div>
+            </form>
           </div>
-
-          {/* Submit Action */}
-          <button
-            type="submit"
-            disabled={isSubmitting}
-            className="w-full h-14 rounded-2xl text-base font-bold shadow-soft relative group overflow-hidden bg-primary tracking-wide text-primary-foreground flex items-center justify-center gap-2 transform active:scale-97 hover:scale-101 active:duration-100 transition-all cursor-pointer bg-gradient-to-r from-primary to-primary-foreground/10"
-          >
-            {isSubmitting ? (
-              <>
-                <Loader2 className="w-5 h-5 animate-spin shrink-0" />
-                <span>Processing Order File Uploads...</span>
-              </>
-            ) : (
-              <span>Confirm & Request Custom Book</span>
-            )}
-          </button>
-        </form>
-        )}
+        </div>
       </div>
-    </div>
   );
 }

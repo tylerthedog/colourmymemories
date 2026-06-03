@@ -370,6 +370,44 @@ async function startServer() {
     }
   });
 
+  // API Route: Secure Paystack Payment Confirmation
+  app.post('/api/confirm-payment', async (req, res) => {
+    try {
+      const { reference, email, name, amount } = req.body;
+      if (!reference || !email) {
+        res.status(400).json({ error: 'Missing payment reference or customer email.' });
+        return;
+      }
+
+      const paymentsFile = path.join(ordersDir, 'payments_index.json');
+      let paymentsList: any[] = [];
+      if (fs.existsSync(paymentsFile)) {
+        try {
+          paymentsList = JSON.parse(fs.readFileSync(paymentsFile, 'utf-8'));
+        } catch {
+          paymentsList = [];
+        }
+      }
+
+      const newPayment = {
+        reference,
+        email,
+        name: name || 'Not Provided',
+        amount: amount || 0,
+        timestamp: new Date().toISOString()
+      };
+
+      paymentsList.unshift(newPayment);
+      fs.writeFileSync(paymentsFile, JSON.stringify(paymentsList, null, 2));
+
+      console.log(`[Paystack Payment Recorded ✓] Ref: ${reference}, Email: ${email}, Amount: ${amount}`);
+      res.status(200).json({ status: 'ok', message: 'Transaction saved successfully.', details: newPayment });
+    } catch (err: any) {
+      console.error('Failed to confirm payment on backend:', err);
+      res.status(500).json({ error: 'Internal server error saving transaction.' });
+    }
+  });
+
   // Serve static folders (e.g. public directory in dev mode and compiled directory in prod mode)
   if (process.env.NODE_ENV !== 'production') {
     const vite = await createViteServer({

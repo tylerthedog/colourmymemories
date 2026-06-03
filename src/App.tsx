@@ -11,6 +11,7 @@ import Footer from './components/Footer';
 import OrderForm from './components/OrderForm';
 import Policies from './components/Policies';
 import NotFound from './components/NotFound';
+import ThankYou from './components/ThankYou';
 
 // Custom lightweight history-reactive router
 function useRouter() {
@@ -67,6 +68,8 @@ export default function App() {
         );
       case '/order':
         return <OrderForm navigate={navigate} />;
+      case '/thank-you':
+        return <ThankYou navigate={navigate} />;
       case '/policies':
         return (
           <div className="flex flex-col min-h-screen bg-background">
