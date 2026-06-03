@@ -408,6 +408,71 @@ async function startServer() {
     }
   });
 
+  // API Route: Google Drive Image Proxy
+  app.get('/api/image-proxy', async (req, res) => {
+    try {
+      const fileId = req.query.id as string;
+      if (!fileId) {
+        res.status(400).send('Missing image id');
+        return;
+      }
+
+      // Extract raw ID if full Google Drive URL is passed
+      let cleanId = fileId;
+      const reg1 = /\/d\/([a-zA-Z0-9_-]{25,})/;
+      const reg2 = /[?&]id=([a-zA-Z0-9_-]{25,})/;
+      const match1 = fileId.match(reg1);
+      if (match1) {
+        cleanId = match1[1];
+      } else {
+        const match2 = fileId.match(reg2);
+        if (match2) {
+          cleanId = match2[1];
+        }
+      }
+
+      // Safe clean character check
+      cleanId = cleanId.replace(/[^a-zA-Z0-9_-]/g, '');
+      if (!cleanId || cleanId.length < 15) {
+        res.status(400).send('Invalid file id');
+        return;
+      }
+
+      const urls = [
+        `https://drive.google.com/thumbnail?id=${cleanId}&sz=w1000`,
+        `https://lh3.googleusercontent.com/d/${cleanId}`,
+        `https://drive.google.com/uc?export=download&id=${cleanId}`
+      ];
+
+      for (const url of urls) {
+        try {
+          const fetchRes = await fetch(url, {
+            headers: {
+              'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36',
+              'Accept': 'image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8'
+            }
+          });
+          if (fetchRes.ok) {
+            const contentType = fetchRes.headers.get('content-type') || 'image/png';
+            res.setHeader('Content-Type', contentType);
+            res.setHeader('Cache-Control', 'public, max-age=31536000'); // Cache for 1 year
+            
+            const arrayBuffer = await fetchRes.arrayBuffer();
+            res.send(Buffer.from(arrayBuffer));
+            return;
+          }
+        } catch (fetchErr) {
+          console.error(`Error fetching image from ${url}:`, fetchErr);
+        }
+      }
+
+      res.status(404).send('Image resource not found');
+    } catch (err: any) {
+      console.error('Image proxy route error:', err);
+      res.status(500).send('Server Error');
+    }
+  });
+
   // Serve static folders (e.g. public directory in dev mode and compiled directory in prod mode)
   if (process.env.NODE_ENV !== 'production') {
     const vite = await createViteServer({

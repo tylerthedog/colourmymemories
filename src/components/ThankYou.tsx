@@ -33,7 +33,7 @@ export default function ThankYou({ navigate }: ThankYouProps) {
           <a href="/" onClick={(e) => { e.preventDefault(); navigate('/'); }} className="flex items-center gap-2">
             <div className="w-8 h-8 rounded-lg overflow-hidden border border-border/15">
               <img 
-                src="https://lh3.googleusercontent.com/d/1UUdIwzt7nRbETaMek7dKYm7fE4eNLV1E" 
+                src="https://drive.google.com/thumbnail?id=1UUdIwzt7nRbETaMek7dKYm7fE4eNLV1E&sz=w300" 
                 alt="ColourMyMemories" 
                 className="w-full h-full object-cover"
                 referrerPolicy="no-referrer"

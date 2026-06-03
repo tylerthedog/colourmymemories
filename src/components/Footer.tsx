@@ -46,7 +46,7 @@ export default function Footer({ navigate, path }: FooterProps) {
             >
               <div className="w-10 h-10 rounded-xl overflow-hidden border border-border/10 shadow-soft">
                 <img 
-                  src="https://lh3.googleusercontent.com/d/1UUdIwzt7nRbETaMek7dKYm7fE4eNLV1E" 
+                  src="https://drive.google.com/thumbnail?id=1UUdIwzt7nRbETaMek7dKYm7fE4eNLV1E&sz=w300" 
                   alt="ColourMyMemories" 
                   className="w-full h-full object-cover"
                   referrerPolicy="no-referrer"
