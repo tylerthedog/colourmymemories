@@ -51,7 +51,7 @@ export default function Header({ path, navigate }: HeaderProps) {
         <a href="/" onClick={handleLogoClick} className="flex items-center gap-2 group">
           <div className="w-9 h-9 rounded-xl overflow-hidden border border-primary/10 shadow-soft group-hover:scale-105 transition-transform duration-300">
             <img 
-              src="https://drive.google.com/thumbnail?id=1UUdIwzt7nRbETaMek7dKYm7fE4eNLV1E&sz=w300" 
+              src="/logo_new.png" 
               alt="ColourMyMemories" 
               className="w-full h-full object-cover"
               referrerPolicy="no-referrer"
