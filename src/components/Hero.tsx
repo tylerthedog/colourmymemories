@@ -6,16 +6,21 @@ interface HeroProps {
 }
 
 const carouselImages = [
-  { src: "/assets/carousel-1-TeRwl5LT.png", alt: "Personalised colouring book preview 1" },
-  { src: "/assets/carousel-2-BbN4GWVW.png", alt: "Personalised colouring book preview 2" },
-  { src: "/assets/carousel-3-DgGshBZI.png", alt: "Personalised colouring book preview 3" },
-  { src: "/assets/carousel-4-ZmqDrfhT.png", alt: "Personalised colouring book preview 4" },
-  { src: "/assets/carousel-5-Bs0j1guA.png", alt: "Personalised colouring book preview 5" },
-  { src: "/assets/carousel-6-t_Quetrk.png", alt: "Personalised colouring book preview 6" },
-  { src: "/assets/carousel-7-YZOMDhsz.png", alt: "Personalised colouring book preview 7" },
-  { src: "/assets/carousel-8-DKoBHHFP.png", alt: "Personalised colouring book preview 8" },
-  { src: "/assets/carousel-9-BCPyTS6g.png", alt: "Personalised colouring book preview 9" },
-  { src: "/assets/carousel-10-BCFju6sL.png", alt: "Personalised colouring book preview 10" }
+  { src: "/assets/final/1.png", alt: "Personalised colouring book preview 1" },
+  { src: "/assets/final/2.png", alt: "Personalised colouring book preview 2" },
+  { src: "/assets/final/3.png", alt: "Personalised colouring book preview 3" },
+  { src: "/assets/final/4.png", alt: "Personalised colouring book preview 4" },
+  { src: "/assets/final/5.png", alt: "Personalised colouring book preview 5" },
+  { src: "/assets/final/6.png", alt: "Personalised colouring book preview 6" },
+  { src: "/assets/final/7.png", alt: "Personalised colouring book preview 7" },
+  { src: "/assets/final/8.png", alt: "Personalised colouring book preview 8" },
+  { src: "/assets/final/9.png", alt: "Personalised colouring book preview 9" },
+  { src: "/assets/final/11.png", alt: "Personalised colouring book preview 10" },
+  { src: "/assets/final/12.png", alt: "Personalised colouring book preview 11" },
+  { src: "/assets/final/13.png", alt: "Personalised colouring book preview 12" },
+  { src: "/assets/final/14.png", alt: "Personalised colouring book preview 13" },
+  { src: "/assets/final/15.png", alt: "Personalised colouring book preview 14" },
+  { src: "/assets/final/16.png", alt: "Personalised colouring book preview 15" }
 ];
 
 export default function Hero({ navigate }: HeroProps) {
