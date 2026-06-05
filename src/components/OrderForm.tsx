@@ -299,7 +299,7 @@ export default function OrderForm({ navigate }: OrderFormProps) {
           <a href="/" onClick={(e) => { e.preventDefault(); navigate('/'); }} className="flex items-center gap-2">
             <div className="w-8 h-8 rounded-lg overflow-hidden border border-border/15">
               <img 
-                src="/logo_new.png" 
+                src="/assets/logo-DcBoA8lE.png" 
                 alt="ColourMyMemories" 
                 className="w-full h-full object-cover"
                 referrerPolicy="no-referrer"
