@@ -70,6 +70,9 @@ export default function OrderForm({ navigate }: OrderFormProps) {
     } else if (code === 'TESTING99') {
       setAppliedCode('TESTING99');
       setPromoSuccessMsg('TESTING99 live testing code applied! 99% discount enabled.');
+    } else if (code === 'TESTING100' || code === 'FREE100' || code === '100OFF') {
+      setAppliedCode(code);
+      setPromoSuccessMsg(`${code} code applied! 100% discount enabled (R 0.00).`);
     } else {
       setPromoError('Invalid promo code. Please specify a correct code.');
     }
@@ -137,6 +140,9 @@ export default function OrderForm({ navigate }: OrderFormProps) {
     if (appliedCode === 'TESTING99') {
       return base * 0.01; // 99% discount
     }
+    if (appliedCode === 'TESTING100' || appliedCode === 'FREE100' || appliedCode === '100OFF') {
+      return 0; // 100% discount
+    }
     return base;
   };
 
@@ -157,6 +163,59 @@ export default function OrderForm({ navigate }: OrderFormProps) {
       setErrorMessage('Please confirm that you have submitted your information on the Google Form by ticking the checkbox.');
       return;
     }
+
+    const finalCheckoutTotal = getDiscountedPrice();
+
+    const handleSuccess = async (response: any, fallbackName?: string) => {
+      const reference = response ? (response.reference || response.trxref || '') : '';
+      const payerName = fallbackName || cardName.trim() || 'Test Customer';
+      console.log('[Paystack / Test OK] Reference:', reference);
+      try {
+        // Save transaction onto existing order confirmation database record on server
+        await fetch('/api/confirm-payment', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            reference: reference,
+            email: emailAddress,
+            name: payerName,
+            amount: finalCheckoutTotal
+          })
+        });
+
+        // Cache payment metrics locally for client thank-you page presentation
+        localStorage.setItem('last_paystack_payment', JSON.stringify({
+          reference: reference,
+          email: emailAddress,
+          amount: finalCheckoutTotal.toFixed(2),
+          name: payerName
+        }));
+
+        // Direct route transition to thank you view
+        navigate('/thank-you');
+      } catch (apiErr) {
+        console.error('Failure saving transaction confirmation securely:', apiErr);
+        localStorage.setItem('last_paystack_payment', JSON.stringify({
+          reference: reference,
+          email: emailAddress,
+          amount: finalCheckoutTotal.toFixed(2),
+          name: payerName
+        }));
+        navigate('/thank-you');
+      } finally {
+        setIsSubmitting(false);
+      }
+    };
+
+    // If total is 0 (100% discount test order), bypass card validation and Paystack popup completely
+    if (finalCheckoutTotal === 0) {
+      setIsSubmitting(true);
+      const testReference = `TEST_100_${Date.now()}`;
+      await handleSuccess({ reference: testReference }, cardName.trim() || 'Test User');
+      return;
+    }
+
+    // Otherwise validate credit card for real / partial charge
     if (!cardName.trim()) {
       setErrorMessage('Please enter the Cardholder Name as written on the card.');
       return;
@@ -186,7 +245,6 @@ export default function OrderForm({ navigate }: OrderFormProps) {
       (processEnv.PAYSTACK_PUBLIC_KEY) || 
       'pk_test_df98f6a9e1442111161d9a0d1d2b8b99ec0ce3bf';
 
-    const finalCheckoutTotal = getDiscountedPrice();
     // Base amount is hardcoded to exactly 60000 (R 600 * 100) as requested.
     // If a discount code is active (e.g., WELCOME30 or TESTING99), we adjust it to the discounted amount times 100 to support safe testing of live/sandbox transactions!
     const finalAmountInCents = appliedCode ? Math.round(finalCheckoutTotal * 100) : 60000;
@@ -197,46 +255,6 @@ export default function OrderForm({ navigate }: OrderFormProps) {
       setIsSubmitting(false);
       return;
     }
-
-    const handleSuccess = async (response: any) => {
-      const reference = response ? (response.reference || response.trxref || '') : '';
-      console.log('[Paystack Secure OK] Reference:', reference);
-      try {
-        // Save transaction onto existing order confirmation database record on server
-        await fetch('/api/confirm-payment', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            reference: reference,
-            email: emailAddress,
-            name: cardName,
-            amount: finalCheckoutTotal
-          })
-        });
-
-        // Cache payment metrics locally for client thank-you page presentation
-        localStorage.setItem('last_paystack_payment', JSON.stringify({
-          reference: reference,
-          email: emailAddress,
-          amount: finalCheckoutTotal.toFixed(2),
-          name: cardName
-        }));
-
-        // Direct route transition to thank you view
-        navigate('/thank-you');
-      } catch (apiErr) {
-        console.error('Failure saving transaction confirmation securely:', apiErr);
-        localStorage.setItem('last_paystack_payment', JSON.stringify({
-          reference: reference,
-          email: emailAddress,
-          amount: finalCheckoutTotal.toFixed(2),
-          name: cardName
-        }));
-        navigate('/thank-you');
-      } finally {
-        setIsSubmitting(false);
-      }
-    };
 
     const handleClose = () => {
       console.log('Window closed');
@@ -470,15 +488,22 @@ export default function OrderForm({ navigate }: OrderFormProps) {
                   </div>
                 </div>
 
+                {getDiscountedPrice() === 0 && (
+                  <div className="p-3 bg-emerald-500/10 border border-emerald-500/25 text-emerald-700 dark:text-emerald-300 rounded-xl text-xs font-semibold flex items-center gap-2">
+                    <ShieldCheck className="w-4 h-4 text-emerald-500 shrink-0" />
+                    <span>100% Free Test Order active: Card details are optional. Click below to test full order completion.</span>
+                  </div>
+                )}
+
                 {/* Cardholder Name */}
                 <div className="space-y-1">
                   <label htmlFor="cardname" className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider block">
-                    Cardholder Name
+                    Cardholder Name {getDiscountedPrice() === 0 && <span className="text-muted-foreground/60 lowercase font-normal">(optional for test)</span>}
                   </label>
                   <input
                     id="cardname"
                     type="text"
-                    required
+                    required={getDiscountedPrice() > 0}
                     placeholder="John Doe"
                     value={cardName}
                     onChange={(e) => setCardName(e.target.value)}
@@ -489,7 +514,7 @@ export default function OrderForm({ navigate }: OrderFormProps) {
                 {/* Card Number */}
                 <div className="space-y-1">
                   <label htmlFor="cardnum" className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider block flex justify-between">
-                    <span>Card Number</span>
+                    <span>Card Number {getDiscountedPrice() === 0 && <span className="text-muted-foreground/60 lowercase font-normal">(optional for test)</span>}</span>
                     {cardBrand !== 'generic' && (
                       <span className="text-[10px] text-primary font-bold uppercase tracking-wider">
                         {cardBrand} Detected
@@ -500,7 +525,7 @@ export default function OrderForm({ navigate }: OrderFormProps) {
                     <input
                       id="cardnum"
                       type="text"
-                      required
+                      required={getDiscountedPrice() > 0}
                       placeholder="0000 0000 0000 0000"
                       value={cardNumber}
                       onChange={handleCardNumberChange}
@@ -522,7 +547,7 @@ export default function OrderForm({ navigate }: OrderFormProps) {
                     <input
                       id="cardexpiry"
                       type="text"
-                      required
+                      required={getDiscountedPrice() > 0}
                       placeholder="MM/YY"
                       value={expiry}
                       onChange={handleExpiryChange}
@@ -538,7 +563,7 @@ export default function OrderForm({ navigate }: OrderFormProps) {
                     <input
                       id="cardcvc"
                       type="password"
-                      required
+                      required={getDiscountedPrice() > 0}
                       placeholder="123"
                       maxLength={4}
                       value={cvc}
@@ -665,12 +690,12 @@ export default function OrderForm({ navigate }: OrderFormProps) {
                 {isSubmitting ? (
                   <>
                     <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Completing Paystack Portal…
+                    {getDiscountedPrice() === 0 ? 'Processing Free Test Order…' : 'Completing Paystack Portal…'}
                   </>
                 ) : (
                   <>
                     <ShieldCheck className="w-4 h-4 mr-2" />
-                    Pay Now (R {getDiscountedPrice().toFixed(2)})
+                    {getDiscountedPrice() === 0 ? 'Complete Order (100% Free / Test Flow)' : `Pay Now (R ${getDiscountedPrice().toFixed(2)})`}
                   </>
                 )}
               </button>
